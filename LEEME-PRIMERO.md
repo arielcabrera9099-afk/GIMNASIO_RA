@@ -2,9 +2,28 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Calendario y gestión de recepcionistas (nueva actualización)
+
+**Fecha preferida:** en Nuevo socio o Editar socio pulsa **📅 Elegir fecha**. Aparece un calendario con selector de mes y año. Pulsa un día para seleccionarlo; **Seleccionar hoy** vuelve a la fecha actual. También puedes seguir escribiendo en el campo. No permite elegir una fecha anterior a la inscripción.
+
+**Recepcionistas:** se administran desde la aplicación con una cuenta administradora. Requiere esta configuración inicial, una sola vez:
+
+1. Ya debes tener aplicadas las migraciones 4 y 5. Abre `base-de-datos/6_gestion_recepcionistas.sql`. En la línea `correo_admin text := 'CAMBIAR_POR_TU_CORREO';` reemplaza el texto entre comillas por el correo con el que tú ya entras a Recepción. Ejecuta todo el archivo en **Supabase → SQL Editor**. No asignes este permiso a todas las cuentas: elige la cuenta que va a administrar al personal.
+2. Para crear cuentas nuevas desde la aplicación, en **Supabase → Authentication → Sign In / Providers** activa **Allow new users to sign up** y verifica que el proveedor **Email** esté habilitado. Este permiso permite crear cuentas de autenticación; el acceso a los datos del gimnasio sigue limitado a las cuentas autorizadas en recepción. Solo el administrador puede dar ese acceso mediante la aplicación.
+3. Si usas confirmación por correo, en **Authentication → URL Configuration → Site URL** configura la dirección real de tu sitio de Netlify. El nuevo usuario debe confirmar el correo antes de iniciar sesión. Las confirmaciones y los límites de envío dependen de la configuración de correo de tu proyecto.
+4. Vuelve a subir la carpeta `sitio` completa al mismo proyecto de Netlify. Cierra sesión y vuelve a entrar con tu correo de administrador. Aparecerá **Recepcionistas** en la barra de recepción.
+
+Desde **Recepcionistas**, escribe el correo y una contraseña inicial (mínimo 8 caracteres) y pulsa **Crear recepcionista**. La contraseña se envía al sistema de autenticación de Supabase; no se guarda en tablas del gimnasio ni en el navegador. Comunícala al nuevo recepcionista por tu medio habitual. Crear la cuenta no cambia la sesión del administrador.
+
+Si la cuenta ya existe o se creó sin completar la autorización, escribe solo su correo y pulsa **Dar acceso a cuenta existente**. No cambia su contraseña. La lista muestra si está pendiente la confirmación de correo.
+
+**Quitar acceso** retira los permisos del gimnasio, conservando la cuenta de autenticación y los registros de pagos. Las cuentas administradoras están protegidas y no se pueden retirar desde esa pantalla. Las cuentas normales de recepción no pueden gestionar personal. Después de esta configuración inicial, las altas y bajas se hacen desde tu sistema; no necesitas volver al SQL Editor por cada persona.
+
+Estas funciones fueron comprobadas con PostgreSQL embebido y autenticación simulada en Chromium. La migración y los ajustes de autenticación deben aplicarse en tu proyecto real antes de usar la gestión de personal.
+
 ## Nueva descarga Excel
 
-Si ya tienes funcionando la fecha de pago acordada de la versión anterior, esta mejora **no necesita ejecutar otro SQL**: descarga el ZIP actualizado y vuelve a subir la carpeta `sitio` completa a tu proyecto existente en Netlify.
+La descarga Excel por sí sola no requiere SQL adicional. Para usar además la gestión de recepcionistas, aplica la migración 6 como se indica arriba. Si solo actualizas Excel: descarga el ZIP actualizado y vuelve a subir la carpeta `sitio` completa a tu proyecto existente en Netlify.
 
 En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con tres hojas:
 

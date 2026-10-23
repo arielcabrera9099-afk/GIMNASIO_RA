@@ -36,6 +36,7 @@ const EQUIS = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true
 
 /* ---------- Estado ---------- */
 const S = {
+  admin: false, calendario: null,
   session: null,        // {rol:'recepcion'} | {rol:'cliente'}
   rolTab: 'cliente',
   clientes: [],         // recepción: todos los socios con sus pagos
@@ -71,6 +72,10 @@ function msgError(e, porDefecto) {
   if (m.includes('socio_no_encontrado')) return 'No se encontró el socio. Actualiza la lista.';
   if (e && e.code === '23505') return 'Esa cuota ya estaba registrada. La lista se actualizó, revisa y vuelve a intentar.';
   return porDefecto;
+}
+
+async function esAdministrador() {
+  try { const {data,error} = await sb.rpc('es_administrador'); return !error && data === true; } catch { return false; }
 }
 
 async function esRecepcion() {
@@ -246,6 +251,7 @@ async function entrarRecepcion() {
     if (error) return fallo('Correo o contraseña incorrectos.');
     if (!(await esRecepcion())) { await sb.auth.signOut(); return fallo('Esta cuenta no tiene permiso de recepción.'); }
   } catch { return fallo('No se pudo conectar. Revisa tu conexión e intenta de nuevo.'); }
+  S.admin = await esAdministrador();
   S.session = { rol: 'recepcion' }; S.cargado = false; S.clientes = [];
   render(); cargar(true);
 }
@@ -264,6 +270,7 @@ function recepcionHTML() {
         <label class="sr" for="orden">Ordenar</label>
         <select id="orden"><option value="retraso" ${S.orden === 'retraso' ? 'selected' : ''}>Más retraso primero</option><option value="nombre" ${S.orden === 'nombre' ? 'selected' : ''}>Nombre A–Z</option></select>
         <button type="button" class="btn ghost sm" data-act="actualizar">Actualizar</button>
+        ${S.admin ? '<button type="button" class="btn" data-act="recepcionistas">Recepcionistas</button>' : ''}
         <button type="button" class="btn" data-act="exportar-excel" title="Exporta todos los registros, sin aplicar los filtros de pantalla">Descargar Excel</button>
         <button type="button" class="btn" data-act="nuevo-cliente">Nuevo socio</button>
         <button type="button" class="btn primary" data-act="cobrar-global">Registrar pago</button>
@@ -458,7 +465,7 @@ function clienteFormHTML(c) {
       <div class="field"><label for="cCuota">Cuota mensual (Gs.)</label><input id="cCuota" type="number" min="0" step="1000" inputmode="numeric" value="${c ? Number(c.cuota) || '' : 150000}"></div>
       <div class="field"><label for="cInicio">Fecha de inscripción</label><input id="cInicio" type="date" min="1900-01-01" max="${hoyISO()}" value="${esc(c ? Cuotas.inscripcion(c) : hoyISO())}"></div>
     </div>
-    <div class="field"><label for="cFechaPago">Fecha de pago de la primera cuota</label><input id="cFechaPago" type="date" min="${esc(c ? Cuotas.inscripcion(c) : hoyISO())}" value="${esc(c ? Cuotas.fechaPago(c) : hoyISO())}" aria-describedby="cFechaPagoAyuda"><p id="cFechaPagoAyuda" class="hint">Elige la fecha que le resulte cómoda al socio. Las siguientes cuotas vencerán ese mismo día de cada mes.</p></div>
+    <div class="field"><label for="cFechaPago">Fecha de pago de la primera cuota</label><div class="fecha-selector"><input id="cFechaPago" type="date" min="${esc(c ? Cuotas.inscripcion(c) : hoyISO())}" value="${esc(c ? Cuotas.fechaPago(c) : hoyISO())}" aria-describedby="cFechaPagoAyuda"><button type="button" class="btn" id="abrirCalendarioPago" data-act="calendario-pago" aria-controls="calendarioPago" aria-expanded="false">📅 Elegir fecha</button></div><div id="calendarioPago" class="calendario" hidden></div><p id="cFechaPagoAyuda" class="hint">Elige la fecha que le resulte cómoda al socio. Las siguientes cuotas vencerán ese mismo día de cada mes.</p></div>
     <div class="field"><label for="cPin">PIN del socio${nuevo ? '' : ' (vacío para no cambiarlo)'}</label>
       <div class="stepper" style="grid-template-columns:minmax(0,1fr) auto"><input id="cPin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="4 a 6 dígitos"><button type="button" class="btn" data-act="gen-pin">Generar</button></div></div>
     <p class="hint">La inscripción y el vencimiento son fechas independientes. Si el día elegido no existe en un mes, la cuota vence el último día de ese mes. El PIN se muestra una sola vez al guardar: anótalo para dárselo al socio.</p>
@@ -503,6 +510,106 @@ async function cambiarEstado(id, activo) {
   if (error) { toast(msgError(error, 'No se pudo guardar el cambio.')); return; }
   await cargar(true);
   toast(activo ? 'Socio reactivado.' : 'Socio dado de baja.');
+}
+
+/* ---------- Calendario visible, independiente del navegador ---------- */
+function alternarCalendario() {
+  const panel = $('#calendarioPago'); if (!panel) return;
+  if (!panel.hidden) { panel.hidden = true; $('#abrirCalendarioPago').setAttribute('aria-expanded','false'); return; }
+  const fecha = Cuotas.valida($('#cFechaPago').value) ? $('#cFechaPago').value : hoyISO();
+  S.calendario = {anio:Number(fecha.slice(0,4)),mes:Number(fecha.slice(5,7))-1};
+  panel.hidden = false; $('#abrirCalendarioPago').setAttribute('aria-expanded','true'); renderCalendario(); panel.scrollIntoView({block:'nearest'});
+}
+function renderCalendario() {
+  const panel = $('#calendarioPago'); if (!panel || !S.calendario) return;
+  const {anio,mes} = S.calendario;
+  const min = $('#cFechaPago').min;
+  const primero = (new Date(anio,mes,1).getDay()+6)%7;
+  const dias = new Date(anio,mes+1,0).getDate();
+  const inicial = Math.min(Number(min.slice(0,4)) || anio, anio);
+  const final = Math.max(new Date().getFullYear()+10,anio);
+  let opciones = ''; for(let y=inicial;y<=final;y++) opciones += `<option value="${y}" ${y===anio?'selected':''}>${y}</option>`;
+  let grilla = '<span aria-hidden="true"></span>'.repeat(primero);
+  for(let dia=1;dia<=dias;dia++) {
+    const fecha = `${anio}-${pad(mes+1)}-${pad(dia)}`;
+    grilla += `<button type="button" class="cal-dia ${fecha===hoyISO()?'cal-hoy':''}" data-act="cal-dia" data-fecha="${fecha}" aria-label="${fmtFecha(fecha)}" aria-pressed="${fecha===$('#cFechaPago').value}" ${fecha<min?'disabled':''}>${dia}</button>`;
+  }
+  panel.innerHTML = `<div class="cal-nav"><button type="button" class="btn sm" data-act="cal-mes" data-d="-1" aria-label="Mes anterior" ${anio===1900&&mes===0?'disabled':''}>‹</button><div class="field"><label class="sr" for="calMes">Mes del calendario</label><select id="calMes">${MESES.map((m,i)=>`<option value="${i}" ${i===mes?'selected':''}>${m}</option>`).join('')}</select></div><div class="field"><label class="sr" for="calAnio">Año del calendario</label><select id="calAnio">${opciones}</select></div><button type="button" class="btn sm" data-act="cal-mes" data-d="1" aria-label="Mes siguiente" ${anio===9999&&mes===11?'disabled':''}>›</button></div><div class="cal-semana" aria-hidden="true">${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d=>`<span>${d}</span>`).join('')}</div><div class="cal-dias" role="group" aria-label="Días de ${MESES[mes]} ${anio}">${grilla}</div><button type="button" class="linkbtn" data-act="cal-hoy" ${hoyISO()<min?'disabled':''}>Seleccionar hoy</button>`;
+}
+function moverCalendario(delta) {
+  const d = new Date(S.calendario.anio,S.calendario.mes+delta,1);
+  if(d.getFullYear()<1900 || d.getFullYear()>9999) return;
+  S.calendario = {anio:d.getFullYear(),mes:d.getMonth()}; renderCalendario();
+}
+function elegirFecha(fecha) {
+  const campo = $('#cFechaPago'); if(!Cuotas.valida(fecha) || fecha<campo.min) return;
+  campo.value = fecha; campo.dispatchEvent(new Event('input',{bubbles:true}));
+  $('#calendarioPago').hidden=true; $('#abrirCalendarioPago').setAttribute('aria-expanded','false'); $('#abrirCalendarioPago').focus();
+}
+
+/* ---------- Gestión de recepción: privilegios verificados en la base ---------- */
+async function abrirRecepcionistas() {
+  if (!S.admin || S.session?.rol !== 'recepcion') return;
+  S.modal = {tipo:'recepcionistas'};
+  abrir(`<div class="dlg-head"><div><p class="eyebrow">Administración</p><h2 id="dlgTitulo">Recepcionistas</h2></div>${btnCerrar}</div>
+    <form id="formRecepcionista" class="form" novalidate><h3>Agregar recepcionista</h3>
+    <div class="field"><label for="rpEmail">Correo electrónico</label><input id="rpEmail" type="email" autocomplete="off" maxlength="254"></div>
+    <div class="field"><label for="rpPass">Contraseña inicial para cuenta nueva</label><input id="rpPass" type="password" autocomplete="new-password" minlength="8"><p class="hint">Mínimo 8 caracteres. Si la cuenta ya existe, usa el botón de acceso sin escribir una contraseña.</p></div>
+    <p id="rpError" class="error" role="alert" hidden></p><p id="rpResultado" class="aviso" role="status" hidden></p>
+    <div class="acciones"><button id="rpCrear" class="btn primary" type="submit">Crear recepcionista</button><button id="rpExistente" class="btn" type="button" data-act="autorizar-existente">Dar acceso a cuenta existente</button></div></form>
+    <h3>Cuentas con acceso</h3><div id="rpLista" aria-live="polite">Cargando…</div>`);
+  await cargarRecepcionistas();
+}
+async function cargarRecepcionistas() {
+  const lista = $('#rpLista'); if (!lista || !S.admin) return;
+  try {
+    const {data,error} = await sb.rpc('listar_recepcionistas'); if(error) throw error;
+    if (!lista.isConnected) return;
+    lista.innerHTML = `<ul class="staff-list">${(data||[]).map(u=>`<li><div><strong>${esc(u.email)}</strong><p class="hint">${u.administrador?'Administrador':'Recepcionista'} · ${u.confirmado?'Correo confirmado':'Pendiente de confirmar correo'}</p></div>${u.administrador?'':`<button class="btn sm" type="button" data-act="quitar-recepcionista" data-uid="${esc(u.user_id)}">Quitar acceso</button>`}</li>`).join('')}</ul>`;
+  } catch { lista.textContent = 'No se pudo cargar la lista. Cierra y vuelve a abrir esta sección.'; }
+}
+async function guardarRecepcionista(existente) {
+  if (!S.admin || S.session?.rol !== 'recepcion') return;
+  const err=$('#rpError'), resultado=$('#rpResultado'), crear=$('#rpCrear'), autorizar=$('#rpExistente');
+  if(!crear || crear.disabled) return;
+  const correo=$('#rpEmail').value.trim().toLowerCase(), clave=$('#rpPass').value;
+  const fallo=m=>{if(err.isConnected){err.textContent=m;err.hidden=false;}};
+  err.hidden=true; resultado.hidden=true;
+  if(!correo || !$('#rpEmail').checkValidity()) return fallo('Escribe un correo electrónico válido.');
+  if(!existente && clave.length<8) return fallo('La contraseña inicial debe tener al menos 8 caracteres.');
+  crear.disabled=true;autorizar.disabled=true;
+  let confirmar=false, creada=false;
+  try {
+    if(!existente) {
+      // Cliente separado: registrar al nuevo usuario nunca cambia la sesión del administrador.
+      const altas=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'ra-gym-altas'}});
+      try {
+        const {data,error}=await altas.auth.signUp({email:correo,password:clave});
+        if(error) {
+          if(error.code==='signup_disabled' || /signups? not allowed|signup.*disabled/i.test(error.message||'')) throw new Error('altas_deshabilitadas');
+          if(error.code==='user_already_exists' || /already registered/i.test(error.message||'')) throw new Error('cuenta_existente');
+          if(error.code==='over_email_send_rate_limit' || error.status===429) throw new Error('limite_altas');
+          throw new Error('alta_fallida');
+        }
+        if(!data?.user || data.user.identities?.length===0) throw new Error('cuenta_existente');
+        creada=true; confirmar=!data.session;
+        if(data.session) await altas.auth.signOut({scope:'local'});
+      } finally { if($('#rpPass')) $('#rpPass').value=''; }
+    }
+    if(S.session?.rol!=='recepcion' || !S.admin) return;
+    const {error}=await sb.rpc('autorizar_recepcionista',{p_correo:correo});
+    if(error) throw error;
+    if(resultado.isConnected) { resultado.textContent=confirmar?'Cuenta creada y autorizada. El recepcionista debe confirmar el enlace recibido en su correo antes de entrar.':(existente?'Acceso de recepción habilitado. La contraseña de esa cuenta no cambió.':'Cuenta creada y autorizada. Ya puede entrar por Recepción.');resultado.hidden=false; }
+    await cargarRecepcionistas();
+  } catch(e) {
+    const m=String(e.message||'');
+    fallo(m.includes('altas_deshabilitadas')?'Las altas por correo están desactivadas. Activa una sola vez Allow new users to sign up en Authentication de Supabase.':m.includes('cuenta_existente')?'La cuenta ya existe. Usa Dar acceso a cuenta existente; su contraseña no se cambia.':m.includes('limite_altas')?'Se alcanzó el límite de creación o envío de correos. Espera antes de reintentar o revisa los límites de correo del proyecto.':m.includes('cuenta_no_encontrada')?'No existe una cuenta con ese correo. Usa Crear recepcionista.':m.includes('sin_permiso')?'Tu cuenta ya no tiene permiso de administración.':creada?'La cuenta se creó, pero no se pudo dar acceso. Reintenta con Dar acceso a cuenta existente.':'No se pudo completar el registro. Revisa la conexión y los requisitos de contraseña del proyecto.');
+  } finally {crear.disabled=false;autorizar.disabled=false;}
+}
+async function quitarRecepcionista(id) {
+  if(!S.admin || S.session?.rol!=='recepcion') return;
+  try {const {error}=await sb.rpc('quitar_recepcionista',{p_user_id:id});if(error)throw error;await cargarRecepcionistas();toast('Acceso de recepción retirado.');}
+  catch {toast('No se pudo quitar el acceso. Las cuentas administradoras están protegidas.');}
 }
 
 /* ---------- Exportación de recepción ---------- */
@@ -617,7 +724,7 @@ function sugerido() {
 }
 async function salir() {
   const eraRecepcion = S.session && S.session.rol === 'recepcion';
-  S.session = null; S.socio = null; S.creds = null; S.clientes = []; S.cargado = false; S.q = ''; S.ci = ''; S.filtro = 'todos'; S.rolTab = 'cliente';
+  S.admin = false; S.session = null; S.socio = null; S.creds = null; S.clientes = []; S.cargado = false; S.q = ''; S.ci = ''; S.filtro = 'todos'; S.rolTab = 'cliente';
   cerrar(); refrescarLogin();
   if (eraRecepcion && sb) { try { await sb.auth.signOut(); } catch {} }
 }
@@ -633,6 +740,13 @@ async function onClick(e) {
   const act = el.dataset.act;
   const fila = el.closest('.row');
   switch (act) {
+    case 'calendario-pago': alternarCalendario(); break;
+    case 'cal-mes': moverCalendario(Number(el.dataset.d)); break;
+    case 'cal-dia': elegirFecha(el.dataset.fecha); break;
+    case 'cal-hoy': elegirFecha(hoyISO()); break;
+    case 'recepcionistas': abrirRecepcionistas(); break;
+    case 'autorizar-existente': guardarRecepcionista(true); break;
+    case 'quitar-recepcionista': armar(el, '¿Quitar acceso?', () => quitarRecepcionista(el.dataset.uid)); break;
     case 'rol': S.rolTab = el.dataset.r; refrescarLogin(); break;
     case 'salir': salir(); break;
     case 'actualizar': cargar(false); break;
@@ -671,6 +785,7 @@ function onSubmit(e) {
   else if (f.id === 'formLogin') entrarSocio();
   else if (f.id === 'formPago') enviarPago();
   else if (f.id === 'formCliente') guardarCliente(f);
+  else if (f.id === 'formRecepcionista') guardarRecepcionista(false);
 }
 function onInput(e) {
   const id = e.target.id;
@@ -681,8 +796,9 @@ function onInput(e) {
     const c = S.clientes.find(x => x.id === e.target.value);
     if (c) { $('#pgMonto').value = Number(c.cuota) || 0; S.modal = { tipo: 'cobrar', id: c.id }; cobrarActualizar(); }
   }
-  else if (id === 'cInicio') { $('#cFechaPago').min = e.target.value; $('#cError').hidden = true; }
+  else if (id === 'cInicio') { $('#cFechaPago').min = e.target.value; $('#cError').hidden = true; if (!$('#calendarioPago').hidden) renderCalendario(); }
   else if (id === 'cFechaPago') { $('#cError').hidden = true; }
+  else if (id === 'calMes' || id === 'calAnio') { S.calendario = {anio:Number($('#calAnio').value),mes:Number($('#calMes').value)}; renderCalendario(); }
   else if (id === 'pgFecha') { $('#pgError').hidden = true; }
   else if (id === 'pgN' || id === 'pgMonto') cobrarActualizar();
 }
@@ -707,14 +823,14 @@ async function boot() {
   app.innerHTML = loginHTML();
   sb.auth.onAuthStateChange(evento => {
     if (evento === 'SIGNED_OUT' && S.session && S.session.rol === 'recepcion') {
-      S.session = null; S.clientes = []; S.cargado = false; cerrar(); refrescarLogin();
+      S.admin = false; S.session = null; S.clientes = []; S.cargado = false; cerrar(); refrescarLogin();
       toast('Tu sesión terminó. Vuelve a entrar.');
     }
   });
   try {
     const { data } = await sb.auth.getSession();
     if (data && data.session) {
-      if (await esRecepcion()) { S.session = { rol: 'recepcion' }; render(); cargar(true); }
+      if (await esRecepcion()) { S.admin = await esAdministrador(); S.session = { rol: 'recepcion' }; render(); cargar(true); }
       else await sb.auth.signOut();
     }
   } catch { /* sin conexión: queda la pantalla de acceso */ }

@@ -45,9 +45,9 @@ Los datos viven en **Supabase** (la base de datos, en la nube) y la página se p
 3. Vuelve a **SQL Editor > New query**. Abre `base-de-datos/2_dar_permiso_a_recepcion.sql`, cambia `CAMBIAR@CORREO.COM` por ese mismo correo, pega todo y presiona **Run**.
 4. El resultado debe mostrar el correo. Si sale vacío, el correo no coincide con el del usuario.
 
-*Recomendado:* en **Authentication**, dentro de la configuración de acceso (**Sign In / Providers**), desactiva **Allow new users to sign up**. Si no encuentras la opción, no pasa nada: aunque alguien se registrara, solo las cuentas del paso 3 tienen permiso de recepción.
+Si vas a crear todas las cuentas manualmente desde Supabase puedes desactivar **Allow new users to sign up** en **Authentication → Sign In / Providers**. Para usar **Crear recepcionista** dentro de esta versión, esa opción debe permanecer activada. Si no encuentras la opción, no pasa nada: aunque alguien se registrara, solo las cuentas del paso 3 tienen permiso de recepción.
 
-Para sumar a otra persona de recepción, repite este paso con su correo.
+Para gestionar las siguientes cuentas desde la aplicación, configura una vez `6_gestion_recepcionistas.sql` siguiendo `LEEME-PRIMERO.md`. Después usa el botón **Recepcionistas** con tu cuenta administradora. El método manual anterior sigue disponible.
 
 ## Paso 4. Copiar los dos datos de conexión
 
