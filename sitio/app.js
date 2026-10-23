@@ -61,7 +61,8 @@ if (configurado && window.supabase && typeof window.supabase.createClient === 'f
 
 function msgError(e, porDefecto) {
   const m = String((e && e.message) || '');
-  if (m.includes('inscripcion_posterior_a_pagos')) return 'La inscripción no puede ser posterior a los pagos que ya tiene este socio.';
+  if (m.includes('fecha_pago_socio_invalida')) return 'La fecha de pago debe ser válida e igual o posterior a la inscripción.';
+  if (m.includes('inscripcion_posterior_a_pagos')) return 'La inscripción o el primer vencimiento no pueden dejar fuera pagos que ya tiene el socio.';
   if (m.includes('inscripcion_invalida')) return 'Revisa la fecha de inscripción.';
   if (m.includes('fecha_pago_invalida')) return 'La fecha de pago debe estar entre la inscripción y hoy.';
   if (m.includes('ci_duplicada')) return 'Ya existe un socio con esa cédula.';
@@ -95,7 +96,7 @@ let enCurso = null;
 async function hacerCarga(silencioso) {
   try {
     const [socios, pagos] = await Promise.all([
-      traerTodo('socios', 'id,nombre,ci,telefono,cuota,inicio,inscripcion,activo,creado', ['nombre', 'id']),
+      traerTodo('socios', 'id,nombre,ci,telefono,cuota,inicio,inscripcion,fecha_pago,activo,creado', ['nombre', 'id']),
       traerTodo('pagos', 'socio_id,periodo,monto,fecha,metodo,nota', ['socio_id', 'periodo'])
     ]);
     const mapa = new Map(socios.map(s => [s.id, { ...s, pagos: {} }]));
@@ -150,7 +151,7 @@ function tira(c, n = 6) {
   const hoyP = periodoHoy(); const pg = c.pagos || {}; let h = '';
   for (let i = n - 1; i >= 0; i--) {
     const p = sumaMeses(hoyP, -i);
-    const pagado = !!pg[p]; const antes = p < Cuotas.inscripcion(c).slice(0,7);
+    const pagado = !!pg[p]; const antes = p < Cuotas.fechaPago(c).slice(0,7);
     const cls = pagado ? 'pagada' : (antes ? 'previa' : (Cuotas.vence(c,p) <= hoyISO() ? 'debe' : 'futura'));
     const txt = pagado ? 'pagada' : (antes ? 'antes de inscribirse' : (Cuotas.vence(c,p) <= hoyISO() ? 'adeudada' : 'por vencer'));
     h += `<span class="cell ${cls}" title="${etiqueta(p)}: ${txt}"></span>`;
@@ -163,8 +164,8 @@ function carnetHTML(c, anio, modo) {
     const p = periodoDe(anio, m); const v = pg[p];
     let cls = '', inner = '', sr = '';
     if (v) { cls = 'pagada'; sr = 'pagada'; inner = `<span class="pie"><span class="dia">${fmtCorta(v.fecha)}</span>${CHECK}</span>`; }
-    else if (p < Cuotas.inscripcion(c).slice(0,7)) { cls = 'previa'; sr = 'antes de inscribirse'; }
-    else if (p >= Cuotas.inscripcion(c).slice(0,7) && Cuotas.vence(c,p) <= hoyISO()) { cls = 'debe'; sr = 'adeudada'; }
+    else if (p < Cuotas.fechaPago(c).slice(0,7)) { cls = 'previa'; sr = 'antes de inscribirse'; }
+    else if (p >= Cuotas.fechaPago(c).slice(0,7) && Cuotas.vence(c,p) <= hoyISO()) { cls = 'debe'; sr = 'adeudada'; }
     cells += `<li class="mes ${cls}"><span class="mn">${MES3[m]}</span>${sr ? `<span class="sr">${sr}</span>` : ''}${inner}</li>`;
   }
   const leyenda = true
@@ -347,7 +348,7 @@ function detalleHTML(c) {
   return `
   <div class="dlg-head"><div><p class="eyebrow">Socio</p><h2 id="dlgTitulo">${esc(c.nombre)}</h2>
     <p class="meta"><span class="mono">CI ${fmtCI(c.ci)}</span>${c.telefono ? ` · <span class="mono">${esc(c.telefono)}</span>` : ''}</p></div>${btnCerrar}</div>
-  <div class="detalle-estado">${pillHTML(c, e)}<span class="muted">Cuota ${fmtGs(c.cuota)} · desde ${fmtFecha(Cuotas.inscripcion(c))}</span></div>
+  <div class="detalle-estado">${pillHTML(c, e)}<span class="muted">Cuota ${fmtGs(c.cuota)} · Inscripción ${fmtFecha(Cuotas.inscripcion(c))} · Primer vencimiento ${fmtFecha(Cuotas.fechaPago(c))}</span></div>
   ${e.retraso && activo(c) ? `<p class="debe-lista"><span class="muted">Adeuda:</span>${e.adeuda.map(p => `<span class="chip late">${etiquetaCorta(p)}</span>`).join('')}</p>` : ''}
   <div class="dlg-nav">${anioNav()}</div>
   ${carnetHTML(c, S.anio, 'recepcion')}
@@ -456,9 +457,10 @@ function clienteFormHTML(c) {
       <div class="field"><label for="cCuota">Cuota mensual (Gs.)</label><input id="cCuota" type="number" min="0" step="1000" inputmode="numeric" value="${c ? Number(c.cuota) || '' : 150000}"></div>
       <div class="field"><label for="cInicio">Fecha de inscripción</label><input id="cInicio" type="date" min="1900-01-01" max="${hoyISO()}" value="${esc(c ? Cuotas.inscripcion(c) : hoyISO())}"></div>
     </div>
+    <div class="field"><label for="cFechaPago">Fecha de pago de la primera cuota</label><input id="cFechaPago" type="date" min="${esc(c ? Cuotas.inscripcion(c) : hoyISO())}" value="${esc(c ? Cuotas.fechaPago(c) : hoyISO())}" aria-describedby="cFechaPagoAyuda"><p id="cFechaPagoAyuda" class="hint">Elige la fecha que le resulte cómoda al socio. Las siguientes cuotas vencerán ese mismo día de cada mes.</p></div>
     <div class="field"><label for="cPin">PIN del socio${nuevo ? '' : ' (vacío para no cambiarlo)'}</label>
       <div class="stepper" style="grid-template-columns:minmax(0,1fr) auto"><input id="cPin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="4 a 6 dígitos"><button type="button" class="btn" data-act="gen-pin">Generar</button></div></div>
-    <p class="hint">La primera cuota vence al inscribirse. Las siguientes vencen ese mismo día de cada mes (o el último día si el mes es más corto). El PIN se muestra una sola vez al guardar: anótalo para dárselo al socio.</p>
+    <p class="hint">La inscripción y el vencimiento son fechas independientes. Si el día elegido no existe en un mes, la cuota vence el último día de ese mes. El PIN se muestra una sola vez al guardar: anótalo para dárselo al socio.</p>
     <p class="error" id="cError" role="alert" hidden></p>
     <div class="dlg-foot"><button type="button" class="btn" data-act="volver">Cancelar</button><button class="btn primary" type="submit" id="cOk">${nuevo ? 'Crear socio' : 'Guardar cambios'}</button></div>
   </form>`;
@@ -476,18 +478,20 @@ async function guardarCliente(f) {
   const telefono = $('#cTel').value.trim();
   const cuota = parseInt($('#cCuota').value, 10);
   const inscripcion = $('#cInicio').value.trim();
-  const inicio = inscripcion.slice(0,7);
+  const fechaPago = $('#cFechaPago').value;
+  const inicio = fechaPago.slice(0,7);
   const pin = $('#cPin').value.trim();
   if (nombre.length < 2) return fallo('Escribe el nombre del socio.');
   if (ci.length < 5 || ci.length > 10) return fallo('La cédula debe tener entre 5 y 10 dígitos.');
   if (S.clientes.some(x => x.ci === ci && x.id !== id)) return fallo('Ya existe un socio con esa cédula.');
   if (!(cuota > 0)) return fallo('Ingresa la cuota mensual en guaraníes.');
   if (!Cuotas.valida(inscripcion) || inscripcion > hoyISO()) return fallo('Elige una fecha de inscripción válida, hasta hoy.');
+  if (!Cuotas.valida(fechaPago) || fechaPago < inscripcion) return fallo('La fecha de pago debe ser igual o posterior a la inscripción.');
   if ((!id || pin) && !/^\d{4,6}$/.test(pin)) return fallo('El PIN debe tener entre 4 y 6 dígitos.');
   const btn = $('#cOk'); btn.disabled = true; err.hidden = true;
   const r = id
-    ? await sb.rpc('editar_socio', { p_id: id, p_nombre: nombre, p_ci: ci, p_telefono: telefono, p_cuota: cuota, p_inicio: inicio, p_pin: pin || null, p_inscripcion: inscripcion }).then(x => x, () => ({ error: { message: 'red' } }))
-    : await sb.rpc('crear_socio', { p_nombre: nombre, p_ci: ci, p_telefono: telefono, p_cuota: cuota, p_inicio: inicio, p_pin: pin, p_inscripcion: inscripcion }).then(x => x, () => ({ error: { message: 'red' } }));
+    ? await sb.rpc('editar_socio', { p_id: id, p_nombre: nombre, p_ci: ci, p_telefono: telefono, p_cuota: cuota, p_inicio: inicio, p_pin: pin || null, p_inscripcion: inscripcion, p_fecha_pago: fechaPago }).then(x => x, () => ({ error: { message: 'red' } }))
+    : await sb.rpc('crear_socio', { p_nombre: nombre, p_ci: ci, p_telefono: telefono, p_cuota: cuota, p_inicio: inicio, p_pin: pin, p_inscripcion: inscripcion, p_fecha_pago: fechaPago }).then(x => x, () => ({ error: { message: 'red' } }));
   if (r.error) { fallo(msgError(r.error, 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')); btn.disabled = false; return; }
   await cargar(true);
   if (id) { toast(pin ? `Datos guardados. Nuevo PIN: ${pin}` : 'Datos guardados.', pin ? 9000 : 3500); abrirDetalle(id); }
@@ -510,7 +514,7 @@ function clienteHTML(c) {
     <main class="socio">
       <section><p class="eyebrow">Carnet de socio</p><h1 class="nombre-grande">${esc(c.nombre)}</h1>
         <p class="socio-meta"><span class="mono">CI ${fmtCI(c.ci)}</span> · Socio desde ${fmtFecha(Cuotas.inscripcion(c))}</p></section>
-      <div class="membership-status">${pillHTML(c, estado(c))}<span>Vencimiento mensual: día ${Number(Cuotas.inscripcion(c).slice(8))} · Cuota ${fmtGs(c.cuota)}</span></div><div class="socio-bar">${anioNav()}<button type="button" class="btn ghost sm" data-act="actualizar-socio">Actualizar</button></div>
+      <div class="membership-status">${pillHTML(c, estado(c))}<span>Vencimiento mensual: día ${Number(Cuotas.fechaPago(c).slice(8))} · Cuota ${fmtGs(c.cuota)}</span></div><div class="socio-bar">${anioNav()}<button type="button" class="btn ghost sm" data-act="actualizar-socio">Actualizar</button></div>
       ${carnetHTML(c, S.anio, 'cliente')}
       <p class="resumen">${delAnio} ${delAnio === 1 ? 'cuota pagada' : 'cuotas pagadas'} en ${S.anio}</p>
       <section><h2>Historial de pagos</h2>
@@ -648,6 +652,8 @@ function onInput(e) {
     const c = S.clientes.find(x => x.id === e.target.value);
     if (c) { $('#pgMonto').value = Number(c.cuota) || 0; S.modal = { tipo: 'cobrar', id: c.id }; cobrarActualizar(); }
   }
+  else if (id === 'cInicio') { $('#cFechaPago').min = e.target.value; $('#cError').hidden = true; }
+  else if (id === 'cFechaPago') { $('#cError').hidden = true; }
   else if (id === 'pgFecha') { $('#pgError').hidden = true; }
   else if (id === 'pgN' || id === 'pgMonto') cobrarActualizar();
 }

@@ -1,4 +1,4 @@
-> **Versión actualizada:** si ya tienes la base conectada, empieza por `LEEME-PRIMERO.md` y la migración `4_actualizar_inscripcion.sql`.
+> **Versión actualizada:** si ya tienes la base conectada, empieza por `LEEME-PRIMERO.md` y la migración más reciente `5_fecha_pago_preferida.sql` (después de la 4, si aún no la aplicaste).
 
 # Guía: poner en marcha las Cuotas del Gimnasio
 
@@ -107,7 +107,7 @@ Otros servicios gratuitos para sitios estáticos (Cloudflare Pages, Vercel) tamb
 - **Corregir un error:** abre el socio (clic en su nombre) y presiona **Quitar** junto al pago. Pide una segunda confirmación.
 - **Dar de baja:** abre el socio y presiona **Dar de baja**. Conserva su historial, deja de contar como activo y ya no puede entrar.
 - **Cambiar el PIN o la cuota:** abre el socio y presiona **Editar datos**. Un PIN nuevo también desbloquea a un socio que se equivocó muchas veces.
-- **Cuotas:** la primera vence el día de inscripción y las siguientes ese mismo día de cada mes (o el último día si no existe). Una cuota cuenta como pagada cuando hay un pago registrado para ese mes.
+- **Cuotas:** la primera vence en la fecha de pago acordada al registrar al socio (hoy por defecto) y las siguientes ese mismo día de cada mes (o el último día si no existe). Una cuota cuenta como pagada cuando hay un pago registrado para ese mes.
 
 ## Si algo falla
 

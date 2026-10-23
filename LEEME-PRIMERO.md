@@ -5,33 +5,33 @@ Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el s
 ## Actualizar tu sistema existente
 
 1. Haz un respaldo de tu base de datos desde Supabase antes de actualizarla.
-2. En tu proyecto de Supabase abre **SQL Editor**, pega el contenido completo de `base-de-datos/4_actualizar_inscripcion.sql` y pulsa **Run**. Se ejecuta en una transacción, se puede repetir y no elimina socios ni pagos. No ejecutes el archivo de socios de ejemplo sobre la base real.
+2. Si ya aplicaste la migración 4, **no la repitas**. Si nunca la aplicaste, ejecuta primero `4_actualizar_inscripcion.sql`. Luego, en tu proyecto de Supabase abre **SQL Editor**, pega el contenido completo de `base-de-datos/5_fecha_pago_preferida.sql` y pulsa **Run**. Se ejecuta en una transacción, se puede repetir y no elimina socios ni pagos. No ejecutes el archivo de socios de ejemplo sobre la base real.
 3. Publica la carpeta **sitio completa**, incluyendo `assets`, `vendor` y `cuotas.js`, en el mismo alojamiento que usabas. Conserva tu dominio y recarga con Ctrl+F5.
 4. Entra a recepción con tu cuenta habitual. Revisa la fecha de inscripción de los socios anteriores y prueba el acceso de un cliente.
 
-La actualización SQL es necesaria **antes** de publicar el sitio nuevo. La aplicación anterior no conoce la fecha de inscripción y sus altas/ediciones dejan de ser compatibles con las nuevas funciones; actualiza ambos componentes en la misma ventana de mantenimiento.
+La migración **5** es necesaria **antes** de publicar esta actualización. Si ya usabas la versión mejorada anterior, solo necesitas ejecutar `5_fecha_pago_preferida.sql` y volver a subir `sitio/` a Netlify. La aplicación anterior no conoce la fecha de inscripción y sus altas/ediciones dejan de ser compatibles con las nuevas funciones; actualiza ambos componentes en la misma ventana de mantenimiento.
 
-Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_permiso_a_recepcion.sql` siguiendo `GUIA.md`. El archivo 1 ya incluye los cambios; en ese caso no hace falta ejecutar también el 4.
+Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_permiso_a_recepcion.sql` siguiendo `GUIA.md`. El archivo 1 ya incluye todos los cambios; en ese caso no hace falta ejecutar también el 4 ni el 5.
 
 ## Qué cambió
 
 - Acceso de **Cliente** seleccionado primero, también después de cerrar sesión. Pestañas accesibles por teclado.
 - Interfaz clara, adaptable a celular y computadora, con fondo adaptado a partir de la imagen de gimnasio adjunta, superficies blancas y estados identificados por texto y color.
 - Recepción: filtros **Activos**, **Al día**, **Con retraso**, **De baja**; búsquedas separadas por **nombre** y **CI**. Se pueden combinar. El nombre admite búsquedas sin acentos; la CI admite puntos y espacios.
-- Alta y edición con **fecha exacta de inscripción**. La primera cuota vence ese día y las siguientes el mismo día de cada mes. Si ese día no existe en un mes, vence el último día: 31/01 → 28/02 → 31/03. En año bisiesto, 29/02.
+- Alta y edición con **fecha exacta de inscripción** y **fecha de pago acordada**, independientes. Al crear un socio ambas traen hoy por defecto. Puedes elegir una fecha de pago igual o posterior a la inscripción; esa es la primera cuota y las siguientes vencen el mismo día de cada mes. El primer período de cuota corresponde al mes de esa fecha elegida; no genera deuda antes de ese primer vencimiento. Si ese día no existe en un mes, vence el último día: 31/01 → 28/02 → 31/03. En año bisiesto, 29/02.
 - Se mantienen los períodos `AAAA-MM` y los pagos anteriores: no se regeneran ni borran.
-- Los socios antiguos reciben como fecha inicial el primer día del mes que ya tenían registrado. No existe información suficiente para adivinar su fecha exacta; recepción puede corregirla. No se permite mover la inscripción después de un pago existente.
+- La migración 4 asigna a los socios originales el primer día del mes que ya tenían registrado. La migración 5 conserva la fecha de inscripción existente como su primer vencimiento, por lo que no cambia su estado de cuotas. No existe información suficiente para adivinar su fecha exacta; recepción puede corregirla. No se permite mover la inscripción después de un pago existente.
 - **Fecha de pago** elegible con calendario. Registra cuándo se recibió el dinero, entre la inscripción y hoy; no cambia el vencimiento mensual. Se pueden registrar varias cuotas y adelantos. El formulario muestra los períodos cubiertos y sus vencimientos.
-- El cliente ve su fecha de inscripción, estado, carnet e historial de pagos.
+- El cliente ve su fecha de inscripción, el día de pago mensual acordado, estado, carnet e historial de pagos.
 - Fuentes y biblioteca Supabase incluidas localmente para reducir dependencias de servicios externos. La base de datos sigue necesitando conexión a Internet.
 
 ## Pruebas y límites
 
-Comprobado: 11 pruebas de reglas de cuotas y búsqueda; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal.
+Comprobado: 13 pruebas de reglas de cuotas y búsqueda; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 
-La conexión real desde el entorno de trabajo está pendiente: el proxy bloquea el dominio del proyecto con HTTP 403. Se guardó su permiso en el borrador de configuración del entorno. Un borrador no aplica el permiso ni publica la aplicación. Tampoco se aplicó la migración al proyecto real: una clave pública de navegador no autoriza administrar el esquema SQL. Usa el SQL Editor de Supabase para el paso 2.
+La conexión real desde el entorno de trabajo está pendiente: el proxy bloquea el dominio del proyecto con HTTP 403. Se guardó su permiso en el borrador de configuración del entorno. Un borrador no aplica el permiso ni publica la aplicación. No se aplicaron estas migraciones al proyecto real: una clave pública de navegador no autoriza administrar el esquema SQL. Usa el SQL Editor de Supabase para el paso 2.
 
 ## Desarrollo local
 

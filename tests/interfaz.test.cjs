@@ -34,7 +34,7 @@ const mock=()=>{
  window.supabase={createClient(){return {
  auth:{onAuthStateChange(){},async getSession(){return {data:{session:window.testStaff?{}:null}}},async signInWithPassword(){return {data:{session:{}},error:null}},async signOut(){}},
  async rpc(name,args){window.testCalls.push({name,args});if(name==='es_recepcion')return {data:true};if(name==='socio_login')return {data:{ok:true,socio:clients[0],pagos:payments.filter(p=>p.socio_id==='a')}};
- if(name==='crear_socio'){clients.push({id:'d',nombre:args.p_nombre,ci:args.p_ci,cuota:args.p_cuota,inicio:args.p_inicio,inscripcion:args.p_inscripcion,activo:true});return {data:'d'}};return {data:null,error:null}},
+ if(name==='crear_socio'){clients.push({id:'d',nombre:args.p_nombre,ci:args.p_ci,cuota:args.p_cuota,inicio:args.p_inicio,inscripcion:args.p_inscripcion,fecha_pago:args.p_fecha_pago,activo:true});return {data:'d'}};return {data:null,error:null}},
  from(table){const q={select(){return q},order(){return q},async range(){return {data:table==='socios'?clients:payments,error:null}},async insert(rows){window.testCalls.push({name:'insert_pagos',args:rows});payments.push(...rows);return {error:null}}};return q}
  }}};
 };
@@ -63,8 +63,10 @@ await page.locator('#buscaCi').fill('');
 await page.screenshot({path:path.join(capturas,'recepcion.png'),fullPage:true});
 await page.getByRole('button',{name:'Nuevo socio',exact:true}).click();
 assert.equal(await page.locator('#cInicio').inputValue(),'2026-10-23');
-await page.locator('#cNombre').fill('Socio Nuevo');await page.locator('#cCi').fill('7654321');await page.locator('#cPin').fill('1234');await page.locator('#cInicio').fill('2026-10-15');await page.locator('#cOk').click();await page.locator('#dlg').waitFor({state:'hidden'});
-const create=await page.evaluate(()=>window.testCalls.find(c=>c.name==='crear_socio'));assert.equal(create.args.p_inscripcion,'2026-10-15');assert.equal(create.args.p_inicio,'2026-10');
+assert.equal(await page.locator('#cFechaPago').inputValue(),'2026-10-23');
+await page.locator('#cNombre').fill('Socio Nuevo');await page.locator('#cCi').fill('7654321');await page.locator('#cPin').fill('1234');await page.locator('#cInicio').fill('2026-10-15');await page.locator('#cFechaPago').fill('2026-10-14');await page.locator('#cOk').click();assert.match(await page.locator('#cError').textContent(),/igual o posterior/);await page.locator('#cFechaPago').fill('2026-11-05');await page.screenshot({path:path.join(capturas,'nuevo-socio.png'),fullPage:true});await page.locator('#cOk').click();await page.locator('#dlg').waitFor({state:'hidden'});
+const create=await page.evaluate(()=>window.testCalls.find(c=>c.name==='crear_socio'));assert.equal(create.args.p_inscripcion,'2026-10-15');assert.equal(create.args.p_inicio,'2026-11');assert.equal(create.args.p_fecha_pago,'2026-11-05');
+await page.getByRole('button',{name:'Socio Nuevo',exact:true}).click();await page.getByRole('button',{name:'Editar datos',exact:true}).click();assert.equal(await page.locator('#cFechaPago').inputValue(),'2026-11-05');await page.getByRole('button',{name:'Cancelar',exact:true}).click();await page.getByRole('button',{name:'Cerrar',exact:true}).click();
 await page.locator('.row').filter({hasText:'Lucía'}).getByRole('button',{name:'Registrar pago'}).click();
 await page.locator('#pgFecha').fill('2026-09-19');await page.locator('#pgOk').click();assert.match(await page.locator('#pgError').textContent(),/inscripción y hoy/);
 await page.locator('#pgFecha').fill('2026-10-20');await page.locator('#pgN').fill('2');

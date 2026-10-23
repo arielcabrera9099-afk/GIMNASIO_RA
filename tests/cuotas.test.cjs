@@ -13,3 +13,5 @@ test('cambio de año', () => assert.deepEqual(C.estado({inicio:'2025-12',inscrip
 test('socios antiguos conservan el mes de inicio', () => assert.equal(C.inscripcion({inicio:'2025-09'}),'2025-09-01'));
 test('fechas imposibles se rechazan', () => {assert.equal(C.valida('2026-02-30'),false);assert.equal(C.valida('2024-02-29'),true);});
 test('filtros independientes, combinables y sin acentos', () => {assert(C.coincide(socio,'maria',''));assert(C.coincide(socio,'','4.123'));assert(C.coincide(socio,'GIMENEZ','456'));assert(!C.coincide(socio,'Carlos','456'));assert(!C.coincide(socio,'María','999'));});
+test('fecha de pago elegida es independiente de la inscripción', () => {const c={...socio,fecha_pago:'2026-02-05',inicio:'2026-02',pagos:{}};assert.equal(C.inscripcion(c),'2026-01-23');assert.equal(C.estado(c,'2026-02-04').retraso,0);assert.deepEqual(C.estado(c,'2026-02-05').adeuda,['2026-02']);assert.equal(C.vence(c,'2026-03'),'2026-03-05');});
+test('fecha de pago con día 31 se ajusta a meses cortos', () => {const c={...socio,fecha_pago:'2026-01-31'};assert.equal(C.vence(c,'2026-02'),'2026-02-28');assert.equal(C.vence(c,'2026-03'),'2026-03-31');});
