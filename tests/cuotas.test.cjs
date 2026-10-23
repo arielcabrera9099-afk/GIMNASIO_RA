@@ -1,0 +1,15 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const C = require('../sitio/cuotas.js');
+const socio = {nombre:'María Giménez',ci:'4123456',inicio:'2026-01',inscripcion:'2026-01-23',pagos:{'2026-01':{monto:150000}}};
+test('no cobra meses anteriores a la inscripción', () => assert.deepEqual(C.estado(socio,'2026-01-22').adeuda,[]));
+test('primera cuota exigible desde la inscripción', () => assert.deepEqual(C.estado({...socio,pagos:{}},'2026-01-23').adeuda,['2026-01']));
+test('no cobra el siguiente mes antes del aniversario', () => assert.equal(C.estado(socio,'2026-02-22').retraso,0));
+test('cobra en la fecha de aniversario y conserva huecos', () => assert.deepEqual(C.estado({...socio,pagos:{'2026-02':{}}},'2026-03-23').adeuda,['2026-01','2026-03']));
+test('pago adelantado cubre la siguiente cuota', () => assert.equal(C.estado({...socio,pagos:{'2026-01':{},'2026-02':{}}},'2026-02-23').retraso,0));
+test('día 31 se adapta a febrero y vuelve al 31 en marzo', () => {const c={...socio,inscripcion:'2026-01-31'};assert.equal(C.vence(c,'2026-02'),'2026-02-28');assert.equal(C.vence(c,'2026-03'),'2026-03-31');});
+test('febrero bisiesto', () => assert.equal(C.vence({...socio,inscripcion:'2024-01-31'},'2024-02'),'2024-02-29'));
+test('cambio de año', () => assert.deepEqual(C.estado({inicio:'2025-12',inscripcion:'2025-12-31',pagos:{}},'2026-01-31').adeuda,['2025-12','2026-01']));
+test('socios antiguos conservan el mes de inicio', () => assert.equal(C.inscripcion({inicio:'2025-09'}),'2025-09-01'));
+test('fechas imposibles se rechazan', () => {assert.equal(C.valida('2026-02-30'),false);assert.equal(C.valida('2024-02-29'),true);});
+test('filtros independientes, combinables y sin acentos', () => {assert(C.coincide(socio,'maria',''));assert(C.coincide(socio,'','4.123'));assert(C.coincide(socio,'GIMENEZ','456'));assert(!C.coincide(socio,'Carlos','456'));assert(!C.coincide(socio,'María','999'));});
