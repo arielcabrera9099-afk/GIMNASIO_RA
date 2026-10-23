@@ -2,6 +2,18 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Nueva descarga Excel
+
+Si ya tienes funcionando la fecha de pago acordada de la versión anterior, esta mejora **no necesita ejecutar otro SQL**: descarga el ZIP actualizado y vuelve a subir la carpeta `sitio` completa a tu proyecto existente en Netlify.
+
+En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con tres hojas:
+
+- **Pagos registrados:** todos los abonos, incluidos los socios de baja, con nombre, CI, período de cuota, monto, fecha, método y nota.
+- **Resumen de socios:** inscripción, primer vencimiento, cuota mensual, estado, saldo pendiente y total abonado.
+- **Cuotas pendientes:** cuotas vencidas sin pago de los socios activos, con sus fechas de vencimiento y montos.
+
+La descarga incluye **todos los registros**, sin aplicar los filtros de búsqueda o estado de la pantalla. Antes de generar el archivo, actualiza los datos; si no puede conectar, informa el error y evita exportar información desactualizada. El archivo se genera en el navegador y no se envía a servicios externos. No incluye PIN ni claves.
+
 ## Actualizar tu sistema existente
 
 1. Haz un respaldo de tu base de datos desde Supabase antes de actualizarla.
@@ -27,7 +39,7 @@ Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_perm
 
 ## Pruebas y límites
 
-Comprobado: 13 pruebas de reglas de cuotas y búsqueda; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal.
+Comprobado: 16 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 
@@ -53,6 +65,7 @@ Para las pruebas opcionales de base de datos y navegador (Node 22 o superior, Li
 
 ```sh
 npm ci
+npm test
 npm run test:db
 npm run test:ui
 ```

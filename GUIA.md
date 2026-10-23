@@ -103,6 +103,7 @@ Otros servicios gratuitos para sitios estáticos (Cloudflare Pages, Vercel) tamb
 ## Uso diario
 
 - **Registrar un pago:** en la lista, **Registrar pago** en la fila del socio. Se asigna a los meses más viejos sin pagar. Con **+** se registran varias cuotas juntas, incluso adelantadas.
+- **Descargar registros:** en recepción, **Descargar Excel** genera un archivo con todos los pagos registrados, el resumen de socios y las cuotas pendientes. Ignora los filtros de pantalla.
 - **Ver quién debe:** el filtro **Con retraso** y el orden **Más retraso primero**. Cada socio muestra "Al día" o "N cuotas de retraso".
 - **Corregir un error:** abre el socio (clic en su nombre) y presiona **Quitar** junto al pago. Pide una segunda confirmación.
 - **Dar de baja:** abre el socio y presiona **Dar de baja**. Conserva su historial, deja de contar como activo y ya no puede entrar.

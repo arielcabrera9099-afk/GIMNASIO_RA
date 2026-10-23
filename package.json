@@ -4,13 +4,14 @@
   "private": true,
   "description": "Portal estático de socios y recepción con Supabase",
   "scripts": {
-    "test": "node --test tests/cuotas.test.cjs",
+    "test": "node --test tests/cuotas.test.cjs tests/exportar.test.cjs",
     "test:db": "node tests/base-de-datos.test.cjs",
     "test:ui": "node tests/interfaz.test.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.11",
     "@sparticuz/chromium": "153.0.0",
+    "exceljs": "4.4.0",
     "playwright": "1.64.1"
   }
 }

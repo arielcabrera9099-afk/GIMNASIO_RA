@@ -35,12 +35,13 @@ const mock=()=>{
  auth:{onAuthStateChange(){},async getSession(){return {data:{session:window.testStaff?{}:null}}},async signInWithPassword(){return {data:{session:{}},error:null}},async signOut(){}},
  async rpc(name,args){window.testCalls.push({name,args});if(name==='es_recepcion')return {data:true};if(name==='socio_login')return {data:{ok:true,socio:clients[0],pagos:payments.filter(p=>p.socio_id==='a')}};
  if(name==='crear_socio'){clients.push({id:'d',nombre:args.p_nombre,ci:args.p_ci,cuota:args.p_cuota,inicio:args.p_inicio,inscripcion:args.p_inscripcion,fecha_pago:args.p_fecha_pago,activo:true});return {data:'d'}};return {data:null,error:null}},
- from(table){const q={select(){return q},order(){return q},async range(){return {data:table==='socios'?clients:payments,error:null}},async insert(rows){window.testCalls.push({name:'insert_pagos',args:rows});payments.push(...rows);return {error:null}}};return q}
+ from(table){const q={select(){return q},order(){return q},async range(){return window.testFailLoad ? {data:null,error:{message:'red'}} : {data:table==='socios'?clients:payments,error:null}},async insert(rows){window.testCalls.push({name:'insert_pagos',args:rows});payments.push(...rows);return {error:null}}};return q}
  }}};
 };
 await page.route('**/vendor/supabase-2.118.0.js',route=>route.fulfill({contentType:'application/javascript',body:`window.testStaff=${staff};(${mock.toString()})();`}));
 await page.goto(baseURL);
 await page.locator('#lgCi').waitFor();
+assert.equal(await page.locator('[data-act=exportar-excel]').count(),0);
 assert.equal(await page.locator('[role=tab]').first().textContent(),'Cliente');
 assert.equal(await page.locator('#tabCliente').getAttribute('aria-selected'),'true');
 await page.screenshot({path:path.join(capturas,'login.png'),fullPage:true});
@@ -60,6 +61,18 @@ await page.locator('#busca').fill('maria');assert.equal(await page.locator('.row
 await page.locator('#buscaCi').fill('512');assert.equal(await page.locator('.row').count(),0);
 await page.locator('#busca').fill('');assert.equal(await page.locator('.row').count(),1);
 await page.locator('#buscaCi').fill('');
+await page.locator('#busca').fill('maria');
+const descarga=page.waitForEvent('download');await page.getByRole('button',{name:'Descargar Excel',exact:true}).click();
+const archivo=await descarga;assert.equal(archivo.suggestedFilename(),'cuotas-gimnasio-2026-10-23.xlsx');
+const ExcelJS=require('exceljs');const libro=new ExcelJS.Workbook();await libro.xlsx.readFile(await archivo.path());
+assert.equal(libro.getWorksheet('Pagos registrados').rowCount,4);assert.equal(libro.getWorksheet('Resumen de socios').rowCount,4);assert.equal(libro.getWorksheet('Cuotas pendientes').rowCount,3);
+assert.equal(await page.locator('.row').count(),1); // El filtro no limita el Excel ni se pierde.
+let descargasExtras=0;page.on('download',()=>descargasExtras++);
+await page.evaluate(()=>{window.testFailLoad=true});await page.getByRole('button',{name:'Descargar Excel',exact:true}).click();
+await page.waitForFunction(()=>!document.querySelector('[data-act=exportar-excel]').disabled);
+assert.match(await page.locator('#toast').textContent(),/No se pudo actualizar/);assert.equal(descargasExtras,0);
+await page.evaluate(()=>{window.testFailLoad=false});await page.locator('#busca').fill('');
+await page.getByRole('button',{name:'Actualizar',exact:true}).click();
 await page.screenshot({path:path.join(capturas,'recepcion.png'),fullPage:true});
 await page.getByRole('button',{name:'Nuevo socio',exact:true}).click();
 assert.equal(await page.locator('#cInicio').inputValue(),'2026-10-23');
@@ -81,5 +94,5 @@ await page.screenshot({path:path.join(capturas,'recepcion-movil.png'),fullPage:t
 await page.getByRole('button',{name:'Salir',exact:true}).click();await page.locator('#lgCi').waitFor();
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(capturas,'login-movil.png'),fullPage:true});
 assert.deepEqual(errors,[]);
-console.log('PASS navegador: cliente primero, teclado, login cliente/recepción, vencimientos, filtros de estado/nombre/CI combinados, alta de socio, fecha de pago y múltiples cuotas; móvil sin desbordamiento; sin errores JS. Con Supabase simulado.');
+console.log('PASS navegador: cliente primero, teclado, login cliente/recepción, vencimientos, filtros de estado/nombre/CI combinados, alta de socio, fecha de pago y múltiples cuotas; descarga XLSX con todos los datos pese a filtros y bloqueo si falla la actualización; móvil sin desbordamiento; sin errores JS. Con Supabase simulado.');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));});

@@ -264,6 +264,7 @@ function recepcionHTML() {
         <label class="sr" for="orden">Ordenar</label>
         <select id="orden"><option value="retraso" ${S.orden === 'retraso' ? 'selected' : ''}>Más retraso primero</option><option value="nombre" ${S.orden === 'nombre' ? 'selected' : ''}>Nombre A–Z</option></select>
         <button type="button" class="btn ghost sm" data-act="actualizar">Actualizar</button>
+        <button type="button" class="btn" data-act="exportar-excel" title="Exporta todos los registros, sin aplicar los filtros de pantalla">Descargar Excel</button>
         <button type="button" class="btn" data-act="nuevo-cliente">Nuevo socio</button>
         <button type="button" class="btn primary" data-act="cobrar-global">Registrar pago</button>
       </div>
@@ -504,6 +505,33 @@ async function cambiarEstado(id, activo) {
   toast(activo ? 'Socio reactivado.' : 'Socio dado de baja.');
 }
 
+/* ---------- Exportación de recepción ---------- */
+async function descargarExcel(btn) {
+  if (S.session?.rol !== 'recepcion' || btn.disabled) return;
+  if (!window.ExcelJS || !window.ExportarCuotas) { toast('No se pudo cargar la exportación. Recarga la página.'); return; }
+  btn.disabled = true; btn.textContent = 'Preparando Excel…';
+  try {
+    // Actualiza todas las páginas de socios/pagos; los filtros solo afectan a la pantalla.
+    await cargar(true);
+    if (S.session?.rol !== 'recepcion') return;
+    if (S.errorDatos || !S.cargado) { toast('No se pudo actualizar la información. Revisa tu conexión y vuelve a descargar.'); return; }
+    const hoy = hoyISO();
+    const libro = ExportarCuotas.crearLibro(S.clientes, hoy, window.ExcelJS, Cuotas);
+    const buffer = await libro.xlsx.writeBuffer();
+    if (S.session?.rol !== 'recepcion') return;
+    const url = URL.createObjectURL(new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    const enlace = document.createElement('a');
+    enlace.href = url; enlace.download = `cuotas-gimnasio-${hoy}.xlsx`;
+    document.body.appendChild(enlace); enlace.click(); enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast('Excel descargado: pagos, resumen de socios y cuotas pendientes.');
+  } catch {
+    toast('No se pudo generar el Excel. Intenta nuevamente.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Descargar Excel';
+  }
+}
+
 /* ---------- Vista de socio ---------- */
 function clienteHTML(c) {
   const pg = pagosDe(c).sort((a, b) => b.periodo.localeCompare(a.periodo));
@@ -608,6 +636,7 @@ async function onClick(e) {
     case 'rol': S.rolTab = el.dataset.r; refrescarLogin(); break;
     case 'salir': salir(); break;
     case 'actualizar': cargar(false); break;
+    case 'exportar-excel': descargarExcel(el); break;
     case 'actualizar-socio': actualizarSocio(); break;
     case 'filtro': S.filtro = el.dataset.f; renderLista(); break;
     case 'detalle': if (fila) abrirDetalle(fila.dataset.id); break;
