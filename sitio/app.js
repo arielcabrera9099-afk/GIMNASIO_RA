@@ -631,7 +631,7 @@ async function descargarExcel(btn) {
     enlace.href = url; enlace.download = `cuotas-gimnasio-${hoy}.xlsx`;
     document.body.appendChild(enlace); enlace.click(); enlace.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    toast('Excel descargado: pagos, resumen de socios y cuotas pendientes.');
+    toast('Excel descargado: resumen general, socios, pagos y cuotas pendientes.');
   } catch {
     toast('No se pudo generar el Excel. Intenta nuevamente.');
   } finally {

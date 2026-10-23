@@ -93,7 +93,7 @@ await page.locator('#busca').fill('maria');
 const descarga=page.waitForEvent('download');await page.getByRole('button',{name:'Descargar Excel',exact:true}).click();
 const archivo=await descarga;assert.equal(archivo.suggestedFilename(),'cuotas-gimnasio-2026-10-23.xlsx');
 const ExcelJS=require('exceljs');const libro=new ExcelJS.Workbook();await libro.xlsx.readFile(await archivo.path());
-assert.equal(libro.getWorksheet('Pagos registrados').rowCount,4);assert.equal(libro.getWorksheet('Resumen de socios').rowCount,4);assert.equal(libro.getWorksheet('Cuotas pendientes').rowCount,3);
+assert.equal(libro.worksheets[0].name,'Resumen general');assert.equal(libro.getWorksheet('Resumen general').getCell('B2').value,3);assert.equal(libro.getWorksheet('Pagos registrados').getCell('D2').value,'SEPTIEMBRE(2026)');assert.equal(libro.getWorksheet('Cuotas pendientes').getCell('C3').value,'OCTUBRE(2026)');assert.equal(libro.getWorksheet('Pagos registrados').rowCount,4);assert.equal(libro.getWorksheet('Resumen de socios').rowCount,4);assert.equal(libro.getWorksheet('Cuotas pendientes').rowCount,3);
 assert.equal(await page.locator('.row').count(),1); // El filtro no limita el Excel ni se pierde.
 let descargasExtras=0;page.on('download',()=>descargasExtras++);
 await page.evaluate(()=>{window.testFailLoad=true});await page.getByRole('button',{name:'Descargar Excel',exact:true}).click();

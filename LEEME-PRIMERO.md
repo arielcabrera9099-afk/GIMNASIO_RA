@@ -25,11 +25,14 @@ Estas funciones fueron comprobadas con PostgreSQL embebido y autenticación simu
 
 La descarga Excel por sí sola no requiere SQL adicional. Para usar además la gestión de recepcionistas, aplica la migración 6 como se indica arriba. Si solo actualizas Excel: descarga el ZIP actualizado y vuelve a subir la carpeta `sitio` completa a tu proyecto existente en Netlify.
 
-En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con tres hojas:
+En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con cuatro hojas. Al abrirlo verás primero **Resumen general**, con **TOTAL DE SOCIOS** destacado:
 
+- **Resumen general:** total de socios (incluye los que no tienen pagos), activos, al día, con retraso, de baja, cuotas registradas, total abonado y saldo pendiente.
 - **Pagos registrados:** todos los abonos, incluidos los socios de baja, con nombre, CI, período de cuota, monto, fecha, método y nota.
 - **Resumen de socios:** inscripción, primer vencimiento, cuota mensual, estado, saldo pendiente y total abonado.
 - **Cuotas pendientes:** cuotas vencidas sin pago de los socios activos, con sus fechas de vencimiento y montos.
+
+Los períodos aparecen con el nombre del mes y año: **OCTUBRE(2026)**, tanto en pagos como en cuotas pendientes. Las fechas de pago siguen siendo fechas reales de Excel y los importes se conservan como números.
 
 La descarga incluye **todos los registros**, sin aplicar los filtros de búsqueda o estado de la pantalla. Antes de generar el archivo, actualiza los datos; si no puede conectar, informa el error y evita exportar información desactualizada. El archivo se genera en el navegador y no se envía a servicios externos. No incluye PIN ni claves.
 
@@ -58,7 +61,7 @@ Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_perm
 
 ## Pruebas y límites
 
-Comprobado: 16 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
+Comprobado: 18 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 
