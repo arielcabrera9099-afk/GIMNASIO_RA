@@ -349,3 +349,7 @@ dialog::backdrop{background:#0b202dbb;backdrop-filter:blur(5px)}
 .calendario>.linkbtn{margin-top:14px}.staff-list{list-style:none;padding:0;margin:12px 0 0}.staff-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}.staff-list strong{overflow-wrap:anywhere}.staff-list li>div{min-width:0}.staff-list .btn{flex-shrink:0}
 @media(max-width:430px){.fecha-selector{grid-template-columns:1fr}.calendario{padding:10px}.cal-nav{grid-template-columns:28px minmax(0,1fr) 76px 28px;gap:4px}.cal-dia{min-height:34px}.staff-list li{align-items:flex-start;flex-direction:column}}
 [hidden]{display:none!important}
+.diarios-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.diarios-stats>div{padding:16px;background:var(--surface-2);border-radius:12px}.diarios-stats span{display:block;font-size:13px;color:var(--ink-2)}.diarios-stats strong{font-size:24px;color:var(--accent)}
+.diarios-filtros{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0}.diarios-lista{list-style:none;margin:12px 0 0;padding:0}.diarios-lista li{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}.diarios-lista li>div{min-width:0;overflow-wrap:anywhere}.diarios-lista li>div:last-child{text-align:right;flex-shrink:0}
+@media(max-width:520px){.diarios-filtros{grid-template-columns:1fr}.diarios-stats strong{font-size:19px}.diarios-lista li{flex-direction:column;gap:6px}.diarios-lista li>div:last-child{text-align:left}}

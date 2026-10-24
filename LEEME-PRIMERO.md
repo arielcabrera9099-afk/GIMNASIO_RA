@@ -2,6 +2,22 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Pases diarios: visitantes que no son mensualeros
+
+Para activar esta actualización, ejecuta **`base-de-datos/7_pases_diarios.sql`** en **Supabase → SQL Editor → Run** y vuelve a subir la carpeta **`sitio` completa** a tu proyecto de Netlify. El archivo crea una tabla independiente y conserva todos los socios y pagos mensuales existentes. No repitas las migraciones 4, 5 o 6 si ya las aplicaste.
+
+En recepción pulsa **Pases diarios**. Cualquier cuenta autorizada de recepción puede registrar:
+
+- Nombre del visitante; CI opcional.
+- Fecha de visita y pago (hoy por defecto), con calendario **Elegir fecha**. No acepta fechas futuras.
+- Precio del pase en guaraníes, método de pago y nota opcional. Ingresa tu tarifa por día; el sistema recuerda el último monto mientras está abierto.
+
+Cada registro corresponde a una visita pagada. La misma persona puede volver otro día y registrar un pase nuevo. No se crea un socio mensual ni se generan cuotas o deudas mensuales para el visitante. Los pases diarios no dan acceso al carnet de socios con PIN.
+
+La sección muestra **pases de hoy** y **cobrado hoy**, con historial filtrable por fecha, nombre o CI. **Ver todos los días** muestra el historial completo; **Actualizar pases** vuelve a consultar la base. Si el registro no se puede confirmar por un fallo de red, revisa el historial antes de reintentarlo para evitar duplicados.
+
+El Excel incluye una quinta hoja **Pases diarios**, con todo el historial independientemente de los filtros. **Resumen general** muestra la cantidad de pases, ingresos diarios acumulados y recaudación total (mensualidades más pases). El total de socios y las cuotas pendientes siguen correspondiendo solo a los mensualeros. Para evitar un informe incompleto, la exportación requiere que la tabla de pases diarios esté creada y accesible.
+
 ## Calendario y gestión de recepcionistas (nueva actualización)
 
 **Fecha preferida:** en Nuevo socio o Editar socio pulsa **📅 Elegir fecha**. Aparece un calendario con selector de mes y año. Pulsa un día para seleccionarlo; **Seleccionar hoy** vuelve a la fecha actual. También puedes seguir escribiendo en el campo. No permite elegir una fecha anterior a la inscripción.
@@ -25,12 +41,13 @@ Estas funciones fueron comprobadas con PostgreSQL embebido y autenticación simu
 
 La descarga Excel por sí sola no requiere SQL adicional. Para usar además la gestión de recepcionistas, aplica la migración 6 como se indica arriba. Si solo actualizas Excel: descarga el ZIP actualizado y vuelve a subir la carpeta `sitio` completa a tu proyecto existente en Netlify.
 
-En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con cuatro hojas. Al abrirlo verás primero **Resumen general**, con **TOTAL DE SOCIOS** destacado:
+En recepción encontrarás **Descargar Excel**, junto a Nuevo socio y Registrar pago. Genera un archivo `.xlsx` con cinco hojas. Al abrirlo verás primero **Resumen general**, con **TOTAL DE SOCIOS** destacado:
 
 - **Resumen general:** total de socios (incluye los que no tienen pagos), activos, al día, con retraso, de baja, cuotas registradas, total abonado y saldo pendiente.
 - **Pagos registrados:** todos los abonos, incluidos los socios de baja, con nombre, CI, período de cuota, monto, fecha, método y nota.
 - **Resumen de socios:** inscripción, primer vencimiento, cuota mensual, estado, saldo pendiente y total abonado.
 - **Cuotas pendientes:** cuotas vencidas sin pago de los socios activos, con sus fechas de vencimiento y montos.
+- **Pases diarios:** visitas y pagos por día, sin generar obligaciones mensuales.
 
 Los períodos aparecen con el nombre del mes y año: **OCTUBRE(2026)**, tanto en pagos como en cuotas pendientes. Las fechas de pago siguen siendo fechas reales de Excel y los importes se conservan como números.
 
@@ -45,7 +62,7 @@ La descarga incluye **todos los registros**, sin aplicar los filtros de búsqued
 
 La migración **5** es necesaria **antes** de publicar esta actualización. Si ya usabas la versión mejorada anterior, solo necesitas ejecutar `5_fecha_pago_preferida.sql` y volver a subir `sitio/` a Netlify. La aplicación anterior no conoce la fecha de inscripción y sus altas/ediciones dejan de ser compatibles con las nuevas funciones; actualiza ambos componentes en la misma ventana de mantenimiento.
 
-Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_permiso_a_recepcion.sql` siguiendo `GUIA.md`. El archivo 1 ya incluye todos los cambios; en ese caso no hace falta ejecutar también el 4 ni el 5.
+Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_permiso_a_recepcion.sql` siguiendo `GUIA.md`. El archivo 1 ya incluye los cambios de cuotas mensuales; en ese caso no hace falta ejecutar el 4 ni el 5. Ejecuta también el 7 para los pases diarios y configura el 6 si quieres gestionar recepcionistas desde la aplicación.
 
 ## Qué cambió
 
@@ -61,7 +78,7 @@ Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_perm
 
 ## Pruebas y límites
 
-Comprobado: 18 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
+Comprobado: 19 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 

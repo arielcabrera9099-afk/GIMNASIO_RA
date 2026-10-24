@@ -37,6 +37,7 @@ const EQUIS = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true
 /* ---------- Estado ---------- */
 const S = {
   admin: false, calendario: null,
+  diarios: [], diariosFecha: '', diariosNombre: '', diariosCi: '', diariosError: '', tarifaDiaria: '',
   session: null,        // {rol:'recepcion'} | {rol:'cliente'}
   rolTab: 'cliente',
   clientes: [],         // recepción: todos los socios con sus pagos
@@ -271,6 +272,7 @@ function recepcionHTML() {
         <select id="orden"><option value="retraso" ${S.orden === 'retraso' ? 'selected' : ''}>Más retraso primero</option><option value="nombre" ${S.orden === 'nombre' ? 'selected' : ''}>Nombre A–Z</option></select>
         <button type="button" class="btn ghost sm" data-act="actualizar">Actualizar</button>
         ${S.admin ? '<button type="button" class="btn" data-act="recepcionistas">Recepcionistas</button>' : ''}
+        <button type="button" class="btn" data-act="pases-diarios">Pases diarios</button>
         <button type="button" class="btn" data-act="exportar-excel" title="Exporta todos los registros, sin aplicar los filtros de pantalla">Descargar Excel</button>
         <button type="button" class="btn" data-act="nuevo-cliente">Nuevo socio</button>
         <button type="button" class="btn primary" data-act="cobrar-global">Registrar pago</button>
@@ -292,7 +294,7 @@ function renderStats() {
     <div class="stat"><span class="lab">Socios activos</span><span class="num">${v.length}</span></div>
     <div class="stat ok"><span class="lab">Al día</span><span class="num">${aldia}</span></div>
     <div class="stat late"><span class="lab">Con retraso</span><span class="num">${conRet.length}</span><p class="sub">${cuotas} ${cuotas === 1 ? 'cuota' : 'cuotas'} · ${fmtGs(deuda)}</p></div>
-    <div class="stat"><span class="lab">Cobrado en ${MESES[Number(mes.slice(5)) - 1].toLowerCase()}</span><span class="num">${miles(cobrado)}</span><p class="sub">guaraníes</p></div>`;
+    <div class="stat"><span class="lab">Cuotas cobradas en ${MESES[Number(mes.slice(5)) - 1].toLowerCase()}</span><span class="num">${miles(cobrado)}</span><p class="sub">guaraníes</p></div>`;
 }
 function filaHTML({ c, e }) {
   const ult = ultimoPago(c);
@@ -513,17 +515,19 @@ async function cambiarEstado(id, activo) {
 }
 
 /* ---------- Calendario visible, independiente del navegador ---------- */
-function alternarCalendario() {
+function campoCalendario() { return $('#'+(S.calendarioCampo || 'cFechaPago')); }
+function alternarCalendario(campo = 'cFechaPago') {
+  S.calendarioCampo = campo;
   const panel = $('#calendarioPago'); if (!panel) return;
   if (!panel.hidden) { panel.hidden = true; $('#abrirCalendarioPago').setAttribute('aria-expanded','false'); return; }
-  const fecha = Cuotas.valida($('#cFechaPago').value) ? $('#cFechaPago').value : hoyISO();
+  const fecha = Cuotas.valida(campoCalendario().value) ? campoCalendario().value : hoyISO();
   S.calendario = {anio:Number(fecha.slice(0,4)),mes:Number(fecha.slice(5,7))-1};
   panel.hidden = false; $('#abrirCalendarioPago').setAttribute('aria-expanded','true'); renderCalendario(); panel.scrollIntoView({block:'nearest'});
 }
 function renderCalendario() {
   const panel = $('#calendarioPago'); if (!panel || !S.calendario) return;
   const {anio,mes} = S.calendario;
-  const min = $('#cFechaPago').min;
+  const min = campoCalendario().min; const max = campoCalendario().max;
   const primero = (new Date(anio,mes,1).getDay()+6)%7;
   const dias = new Date(anio,mes+1,0).getDate();
   const inicial = Math.min(Number(min.slice(0,4)) || anio, anio);
@@ -532,9 +536,9 @@ function renderCalendario() {
   let grilla = '<span aria-hidden="true"></span>'.repeat(primero);
   for(let dia=1;dia<=dias;dia++) {
     const fecha = `${anio}-${pad(mes+1)}-${pad(dia)}`;
-    grilla += `<button type="button" class="cal-dia ${fecha===hoyISO()?'cal-hoy':''}" data-act="cal-dia" data-fecha="${fecha}" aria-label="${fmtFecha(fecha)}" aria-pressed="${fecha===$('#cFechaPago').value}" ${fecha<min?'disabled':''}>${dia}</button>`;
+    grilla += `<button type="button" class="cal-dia ${fecha===hoyISO()?'cal-hoy':''}" data-act="cal-dia" data-fecha="${fecha}" aria-label="${fmtFecha(fecha)}" aria-pressed="${fecha===campoCalendario().value}" ${fecha<min||(max&&fecha>max)?'disabled':''}>${dia}</button>`;
   }
-  panel.innerHTML = `<div class="cal-nav"><button type="button" class="btn sm" data-act="cal-mes" data-d="-1" aria-label="Mes anterior" ${anio===1900&&mes===0?'disabled':''}>‹</button><div class="field"><label class="sr" for="calMes">Mes del calendario</label><select id="calMes">${MESES.map((m,i)=>`<option value="${i}" ${i===mes?'selected':''}>${m}</option>`).join('')}</select></div><div class="field"><label class="sr" for="calAnio">Año del calendario</label><select id="calAnio">${opciones}</select></div><button type="button" class="btn sm" data-act="cal-mes" data-d="1" aria-label="Mes siguiente" ${anio===9999&&mes===11?'disabled':''}>›</button></div><div class="cal-semana" aria-hidden="true">${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d=>`<span>${d}</span>`).join('')}</div><div class="cal-dias" role="group" aria-label="Días de ${MESES[mes]} ${anio}">${grilla}</div><button type="button" class="linkbtn" data-act="cal-hoy" ${hoyISO()<min?'disabled':''}>Seleccionar hoy</button>`;
+  panel.innerHTML = `<div class="cal-nav"><button type="button" class="btn sm" data-act="cal-mes" data-d="-1" aria-label="Mes anterior" ${anio===1900&&mes===0?'disabled':''}>‹</button><div class="field"><label class="sr" for="calMes">Mes del calendario</label><select id="calMes">${MESES.map((m,i)=>`<option value="${i}" ${i===mes?'selected':''}>${m}</option>`).join('')}</select></div><div class="field"><label class="sr" for="calAnio">Año del calendario</label><select id="calAnio">${opciones}</select></div><button type="button" class="btn sm" data-act="cal-mes" data-d="1" aria-label="Mes siguiente" ${anio===9999&&mes===11?'disabled':''}>›</button></div><div class="cal-semana" aria-hidden="true">${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d=>`<span>${d}</span>`).join('')}</div><div class="cal-dias" role="group" aria-label="Días de ${MESES[mes]} ${anio}">${grilla}</div><button type="button" class="linkbtn" data-act="cal-hoy" ${hoyISO()<min||(max&&hoyISO()>max)?'disabled':''}>Seleccionar hoy</button>`;
 }
 function moverCalendario(delta) {
   const d = new Date(S.calendario.anio,S.calendario.mes+delta,1);
@@ -542,7 +546,7 @@ function moverCalendario(delta) {
   S.calendario = {anio:d.getFullYear(),mes:d.getMonth()}; renderCalendario();
 }
 function elegirFecha(fecha) {
-  const campo = $('#cFechaPago'); if(!Cuotas.valida(fecha) || fecha<campo.min) return;
+  const campo = campoCalendario(); if(!Cuotas.valida(fecha) || fecha<campo.min || (campo.max && fecha>campo.max)) return;
   campo.value = fecha; campo.dispatchEvent(new Event('input',{bubbles:true}));
   $('#calendarioPago').hidden=true; $('#abrirCalendarioPago').setAttribute('aria-expanded','false'); $('#abrirCalendarioPago').focus();
 }
@@ -612,6 +616,70 @@ async function quitarRecepcionista(id) {
   catch {toast('No se pudo quitar el acceso. Las cuentas administradoras están protegidas.');}
 }
 
+/* ---------- Visitantes que pagan por día ---------- */
+async function cargarDiarios() {
+  try {
+    const datos=await traerTodo('pases_diarios','id,nombre,ci,fecha,monto,metodo,nota,creado',['fecha','id']);
+    if(S.session?.rol!=='recepcion') return false;
+    S.diarios=datos;S.diariosError='';return true;
+  } catch(e) {
+    S.diariosError=['PGRST205','42P01'].includes(e.code)?'Para activar esta sección, aplica 7_pases_diarios.sql en Supabase.':'No se pudieron actualizar los pases diarios. Revisa la conexión e intenta nuevamente.';
+    return false;
+  }
+}
+async function abrirDiarios() {
+  if(S.session?.rol!=='recepcion')return;
+  S.modal={tipo:'diarios'};S.diariosFecha=hoyISO();S.diariosNombre='';S.diariosCi='';
+  abrir(`<div class="dlg-head"><div><p class="eyebrow">Recepción · Pago por visita</p><h2 id="dlgTitulo">Pases diarios</h2><p class="hint">Registra cada visita sin generar cuotas mensuales.</p></div>${btnCerrar}</div>
+    <div id="diariosAviso" role="status"></div><div id="diariosStats" class="diarios-stats"></div>
+    <form id="formDiario" class="form" novalidate><h3>Registrar pase</h3>
+    <div class="fila2"><div class="field"><label for="pdNombre">Nombre completo</label><input id="pdNombre" maxlength="120" autocomplete="off"></div><div class="field"><label for="pdCi">CI (opcional)</label><input id="pdCi" inputmode="numeric" maxlength="14" placeholder="Solo números" autocomplete="off"></div></div>
+    <div class="fila2"><div class="field"><label for="pdFecha">Fecha de la visita y pago</label><div class="fecha-selector"><input id="pdFecha" type="date" min="1900-01-01" max="${hoyISO()}" value="${hoyISO()}"><button type="button" class="btn" id="abrirCalendarioPago" data-act="calendario-pago" data-campo="pdFecha" aria-controls="calendarioPago" aria-expanded="false">📅 Elegir fecha</button></div><div id="calendarioPago" class="calendario" hidden></div></div><div class="field"><label for="pdMonto">Precio del pase (Gs.)</label><input id="pdMonto" type="number" min="1" step="1000" inputmode="numeric" value="${esc(S.tarifaDiaria)}" placeholder="Ingresa el precio por día"></div></div>
+    <div class="fila2"><div class="field"><label for="pdMetodo">Método de pago</label><select id="pdMetodo">${METODOS.map(m=>`<option>${m}</option>`).join('')}</select></div><div class="field"><label for="pdNota">Nota (opcional)</label><input id="pdNota" maxlength="120" autocomplete="off"></div></div>
+    <p class="error" id="pdError" role="alert" hidden></p><button id="pdGuardar" class="btn primary" type="submit">Registrar pase diario</button></form>
+    <h3>Historial de pases</h3><div class="diarios-filtros"><div class="field"><label for="pdFiltroFecha">Fecha (vacía para ver todas)</label><input id="pdFiltroFecha" type="date" value="${hoyISO()}"></div><div class="field"><label for="pdFiltroNombre">Nombre</label><input id="pdFiltroNombre" type="search" placeholder="Buscar nombre"></div><div class="field"><label for="pdFiltroCi">CI</label><input id="pdFiltroCi" type="search" inputmode="numeric" placeholder="Buscar CI"></div></div>
+    <div class="acciones"><button type="button" class="btn sm" data-act="diarios-todos">Ver todos los días</button><button type="button" class="btn sm" data-act="diarios-actualizar">Actualizar pases</button></div>
+    <p id="pdResultados" class="hint" aria-live="polite"></p><div id="pdLista"></div>`);
+  await actualizarDiarios();
+}
+async function actualizarDiarios() {
+  const ok=await cargarDiarios();if(!$('#pdLista'))return;
+  $('#diariosAviso').innerHTML=ok?'':`<p class="aviso">${esc(S.diariosError)}</p>`;
+  $('#pdGuardar').disabled=!ok;
+  renderDiarios();
+}
+function renderDiarios() {
+  if(!$('#pdLista'))return;
+  const deHoy=S.diarios.filter(p=>p.fecha===hoyISO());
+  $('#diariosStats').innerHTML=`<div><span>Pases de hoy</span><strong>${deHoy.length}</strong></div><div><span>Cobrado hoy</span><strong>${fmtGs(deHoy.reduce((t,p)=>t+Number(p.monto),0))}</strong></div>`;
+  const lista=S.diarios.filter(p=>(!S.diariosFecha||p.fecha===S.diariosFecha)&&Cuotas.coincide(p,S.diariosNombre,S.diariosCi)).sort((a,b)=>b.fecha.localeCompare(a.fecha)||String(b.creado).localeCompare(String(a.creado)));
+  $('#pdResultados').textContent=`${lista.length} ${lista.length===1?'pase':'pases'} · ${fmtGs(lista.reduce((t,p)=>t+Number(p.monto),0))} en la selección`;
+  $('#pdLista').innerHTML=lista.length?`<ul class="diarios-lista">${lista.map(p=>`<li><div><strong>${esc(p.nombre)}</strong><p class="hint">${p.ci?'CI '+esc(p.ci):'Sin CI'} · ${fmtFecha(p.fecha)}</p>${p.nota?`<p class="hint">${esc(p.nota)}</p>`:''}</div><div><strong>${fmtGs(p.monto)}</strong><p class="hint">${esc(p.metodo)}</p></div></li>`).join('')}</ul>`:'<p class="hint">No hay pases para estos filtros.</p>';
+}
+async function guardarDiario() {
+  if(S.session?.rol!=='recepcion')return;
+  const btn=$('#pdGuardar'),err=$('#pdError');if(!btn||btn.disabled)return;
+  const fallo=m=>{if(err.isConnected){err.textContent=m;err.hidden=false;}};
+  const nombre=$('#pdNombre').value.trim().replace(/\s+/g,' '),ci=$('#pdCi').value.replace(/\D/g,''),fecha=$('#pdFecha').value,monto=Number($('#pdMonto').value),metodo=$('#pdMetodo').value,nota=$('#pdNota').value.trim();
+  err.hidden=true;
+  if(nombre.length<2||nombre.length>120)return fallo('Escribe el nombre del visitante.');
+  if($('#pdCi').value.trim()&&!/^\d{5,10}$/.test(ci))return fallo('La CI debe tener entre 5 y 10 dígitos, o quedar vacía.');
+  if(!Cuotas.valida(fecha)||fecha>hoyISO())return fallo('Selecciona una fecha válida, hasta hoy.');
+  if(!Number.isInteger(monto)||monto<=0||monto>2147483647)return fallo('Ingresa un precio mayor a cero, en guaraníes enteros.');
+  btn.disabled=true;
+  try {
+    const {error}=await sb.from('pases_diarios').insert({nombre,ci,fecha,monto,metodo,nota});if(error)throw error;
+    S.tarifaDiaria=String(monto);
+    if(!btn.isConnected)return;
+    $('#formDiario').reset();$('#pdMonto').value=S.tarifaDiaria;$('#pdFecha').value=hoyISO();
+    S.diariosFecha=fecha;$('#pdFiltroFecha').value=fecha;S.diariosNombre='';S.diariosCi='';$('#pdFiltroNombre').value='';$('#pdFiltroCi').value='';
+    const ok=await cargarDiarios();if(!btn.isConnected)return;
+    $('#diariosAviso').innerHTML=ok?'':`<p class="aviso">El pase se guardó. ${esc(S.diariosError)} No vuelvas a registrarlo.</p>`;
+    renderDiarios();toast('Pase diario registrado.');
+  } catch {fallo('No se pudo confirmar el registro. Actualiza el historial antes de reintentar para evitar duplicados.');}
+  finally {btn.disabled=false;}
+}
+
 /* ---------- Exportación de recepción ---------- */
 async function descargarExcel(btn) {
   if (S.session?.rol !== 'recepcion' || btn.disabled) return;
@@ -622,8 +690,9 @@ async function descargarExcel(btn) {
     await cargar(true);
     if (S.session?.rol !== 'recepcion') return;
     if (S.errorDatos || !S.cargado) { toast('No se pudo actualizar la información. Revisa tu conexión y vuelve a descargar.'); return; }
+    if(!await cargarDiarios()) {toast(S.diariosError);return;}
     const hoy = hoyISO();
-    const libro = ExportarCuotas.crearLibro(S.clientes, hoy, window.ExcelJS, Cuotas);
+    const libro = ExportarCuotas.crearLibro(S.clientes, hoy, window.ExcelJS, Cuotas, S.diarios);
     const buffer = await libro.xlsx.writeBuffer();
     if (S.session?.rol !== 'recepcion') return;
     const url = URL.createObjectURL(new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
@@ -631,7 +700,7 @@ async function descargarExcel(btn) {
     enlace.href = url; enlace.download = `cuotas-gimnasio-${hoy}.xlsx`;
     document.body.appendChild(enlace); enlace.click(); enlace.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    toast('Excel descargado: resumen general, socios, pagos y cuotas pendientes.');
+    toast('Excel descargado: resumen, socios, cuotas y pases diarios.');
   } catch {
     toast('No se pudo generar el Excel. Intenta nuevamente.');
   } finally {
@@ -724,7 +793,7 @@ function sugerido() {
 }
 async function salir() {
   const eraRecepcion = S.session && S.session.rol === 'recepcion';
-  S.admin = false; S.session = null; S.socio = null; S.creds = null; S.clientes = []; S.cargado = false; S.q = ''; S.ci = ''; S.filtro = 'todos'; S.rolTab = 'cliente';
+  S.diarios=[]; S.diariosError=''; S.admin = false; S.session = null; S.socio = null; S.creds = null; S.clientes = []; S.cargado = false; S.q = ''; S.ci = ''; S.filtro = 'todos'; S.rolTab = 'cliente';
   cerrar(); refrescarLogin();
   if (eraRecepcion && sb) { try { await sb.auth.signOut(); } catch {} }
 }
@@ -740,10 +809,13 @@ async function onClick(e) {
   const act = el.dataset.act;
   const fila = el.closest('.row');
   switch (act) {
-    case 'calendario-pago': alternarCalendario(); break;
+    case 'calendario-pago': alternarCalendario(el.dataset.campo || 'cFechaPago'); break;
     case 'cal-mes': moverCalendario(Number(el.dataset.d)); break;
     case 'cal-dia': elegirFecha(el.dataset.fecha); break;
     case 'cal-hoy': elegirFecha(hoyISO()); break;
+    case 'pases-diarios': abrirDiarios(); break;
+    case 'diarios-actualizar': actualizarDiarios(); break;
+    case 'diarios-todos': S.diariosFecha='';$('#pdFiltroFecha').value='';renderDiarios();break;
     case 'recepcionistas': abrirRecepcionistas(); break;
     case 'autorizar-existente': guardarRecepcionista(true); break;
     case 'quitar-recepcionista': armar(el, '¿Quitar acceso?', () => quitarRecepcionista(el.dataset.uid)); break;
@@ -785,12 +857,16 @@ function onSubmit(e) {
   else if (f.id === 'formLogin') entrarSocio();
   else if (f.id === 'formPago') enviarPago();
   else if (f.id === 'formCliente') guardarCliente(f);
+  else if (f.id === 'formDiario') guardarDiario();
   else if (f.id === 'formRecepcionista') guardarRecepcionista(false);
 }
 function onInput(e) {
   const id = e.target.id;
   if (id === 'busca') { S.q = e.target.value; renderLista(); }
   else if (id === 'buscaCi') { S.ci = e.target.value; renderLista(); }
+  else if(id==='pdFiltroFecha'){S.diariosFecha=e.target.value;renderDiarios();}
+  else if(id==='pdFiltroNombre'){S.diariosNombre=e.target.value;renderDiarios();}
+  else if(id==='pdFiltroCi'){S.diariosCi=e.target.value;renderDiarios();}
   else if (id === 'orden') { S.orden = e.target.value; renderLista(); }
   else if (id === 'pgCliente') {
     const c = S.clientes.find(x => x.id === e.target.value);
@@ -823,7 +899,7 @@ async function boot() {
   app.innerHTML = loginHTML();
   sb.auth.onAuthStateChange(evento => {
     if (evento === 'SIGNED_OUT' && S.session && S.session.rol === 'recepcion') {
-      S.admin = false; S.session = null; S.clientes = []; S.cargado = false; cerrar(); refrescarLogin();
+      S.diarios=[]; S.diariosError=''; S.admin = false; S.session = null; S.clientes = []; S.cargado = false; cerrar(); refrescarLogin();
       toast('Tu sesión terminó. Vuelve a entrar.');
     }
   });

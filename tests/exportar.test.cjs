@@ -11,7 +11,7 @@ test('XLSX legible con todos los pagos, bajas, acentos, CI con ceros, fechas y m
  const out=crearLibro(clientes,'2026-10-23',ExcelJS,Cuotas);
  const bytes=await out.xlsx.writeBuffer();assert.equal(Buffer.from(bytes).subarray(0,2).toString(),'PK');
  const loaded=new ExcelJS.Workbook();await loaded.xlsx.load(bytes);
- assert.deepEqual(loaded.worksheets.map(h=>h.name),['Resumen general','Pagos registrados','Resumen de socios','Cuotas pendientes']);
+ assert.deepEqual(loaded.worksheets.map(h=>h.name),['Resumen general','Pagos registrados','Resumen de socios','Cuotas pendientes','Pases diarios']);
  const h=loaded.getWorksheet('Pagos registrados');assert.equal(h.rowCount,3);
  assert.equal(h.getCell('A3').value,'María Giménez');assert.equal(h.getCell('B3').value,'0012345');
  assert.equal(h.getCell('D3').value,'SEPTIEMBRE(2026)');assert.equal(h.getCell('D3').type,ExcelJS.ValueType.String);
@@ -31,7 +31,7 @@ test('resumen y pendientes coinciden con las reglas y no cobran cuotas nuevas a 
 test('sin datos produce hojas con cabeceras; no modifica los datos originales',async()=>{
  const snapshot=JSON.stringify(clientes);crearLibro(clientes,'2026-10-23',ExcelJS,Cuotas);assert.equal(JSON.stringify(clientes),snapshot);
  const out=crearLibro([],'2026-10-23',ExcelJS,Cuotas);for(const h of out.worksheets.filter(h=>h.name!=='Resumen general'))assert.equal(h.rowCount,1);assert.equal(out.getWorksheet('Resumen general').getCell('B2').value,0);
- const loaded=new ExcelJS.Workbook();await loaded.xlsx.load(await out.xlsx.writeBuffer());assert.equal(loaded.worksheets.length,4);
+ const loaded=new ExcelJS.Workbook();await loaded.xlsx.load(await out.xlsx.writeBuffer());assert.equal(loaded.worksheets.length,5);
 });
 
 test('total de socios incluye socios sin pagos; resumen distingue activos, bajas, cuotas e importes',async()=>{
@@ -39,7 +39,7 @@ test('total de socios incluye socios sin pagos; resumen distingue activos, bajas
  const out=crearLibro(c,'2026-10-23',ExcelJS,Cuotas);
  const loaded=new ExcelJS.Workbook();await loaded.xlsx.load(await out.xlsx.writeBuffer());
  const h=loaded.getWorksheet('Resumen general');
- const esperado={'TOTAL DE SOCIOS':3,'Socios activos':2,'Socios al día':1,'Socios con retraso':1,'Socios de baja':1,'Cuotas pagadas registradas':2,'Cuotas pendientes':1,'Total abonado (Gs.)':330000,'Saldo pendiente (Gs.)':150000};
+ const esperado={'TOTAL DE SOCIOS':3,'Socios activos':2,'Socios al día':1,'Socios con retraso':1,'Socios de baja':1,'Cuotas pagadas registradas':2,'Cuotas pendientes':1,'Cuotas mensuales abonadas (Gs.)':330000,'Saldo pendiente (Gs.)':150000};
  for(let i=2;i<=10;i++)assert.equal(h.getCell(i,2).value,esperado[h.getCell(i,1).value]);
  assert.equal(h.getCell('B11').value.toISOString(),'2026-10-23T00:00:00.000Z');assert.equal(h.getCell('B11').numFmt,'dd/mm/yyyy');
 });
@@ -47,4 +47,13 @@ test('períodos de enero y diciembre conservan el año y muestran nombres de mes
  const c={...clientes[0],pagos:{'2025-12':{monto:100,fecha:'2025-12-31'},'2026-01':{monto:100,fecha:'2026-01-31'}}};
  const h=crearLibro([c],'2026-10-23',ExcelJS,Cuotas).getWorksheet('Pagos registrados');
  assert.equal(h.getCell('D2').value,'DICIEMBRE(2025)');assert.equal(h.getCell('D3').value,'ENERO(2026)');
+});
+
+test('pases diarios se exportan aparte sin crear socios ni deuda mensual y suman la recaudación',async()=>{
+ const datos=[{nombre:'Visitante diario',ci:'0012345',fecha:'2026-10-23',monto:20000,metodo:'Efectivo',nota:'Visita de prueba'},{nombre:'Otro visitante',ci:'',fecha:'2026-10-22',monto:15000,metodo:'Transferencia'}];
+ const out=crearLibro(clientes,'2026-10-23',ExcelJS,Cuotas,datos);
+ const libro=new ExcelJS.Workbook();await libro.xlsx.load(await out.xlsx.writeBuffer());
+ const h=libro.getWorksheet('Pases diarios');assert.equal(h.rowCount,3);assert.equal(h.getCell('B3').value,'0012345');assert.equal(h.getCell('D3').value,20000);assert.equal(h.getCell('C3').value.toISOString(),'2026-10-23T00:00:00.000Z');
+ const resumen=libro.getWorksheet('Resumen general');assert.equal(resumen.getCell('B2').value,2);assert.equal(resumen.getCell('B12').value,2);assert.equal(resumen.getCell('B13').value,35000);assert.equal(resumen.getCell('B14').value,365000);assert.equal(resumen.getCell('B10').value,150000);
+ assert.equal(libro.getWorksheet('Resumen de socios').rowCount,3);assert.equal(libro.getWorksheet('Cuotas pendientes').rowCount,2);
 });

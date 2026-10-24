@@ -1,7 +1,7 @@
 /* Exportación XLSX local: solo datos de recepción, sin enviar archivos a terceros. */
 (function(root) {
   'use strict';
-  function crearLibro(clientes, hoy, ExcelJS, Cuotas) {
+  function crearLibro(clientes, hoy, ExcelJS, Cuotas, diarios = []) {
     const libro = new ExcelJS.Workbook();
     libro.creator = 'RA GYM';
     libro.views = [{activeTab:0}];
@@ -40,6 +40,13 @@
       ['Socio','nombre',32],['CI','ci',18,'@'],['Período de cuota','periodo',26,'@'],
       ['Vencimiento','vencimiento',20,'dd/mm/yyyy'],['Monto (Gs.)','monto',20,'#,##0']
     ]);
+    const pases = hoja('Pases diarios', [
+      ['Visitante','nombre',32],['CI','ci',18,'@'],['Fecha de visita y pago','fecha',26,'dd/mm/yyyy'],
+      ['Monto (Gs.)','monto',20,'#,##0'],['Método de pago','metodo',24],['Nota','nota',45]
+    ]);
+    for(const p of [...diarios].sort((a,b)=>texto(a.fecha).localeCompare(texto(b.fecha))||texto(a.nombre).localeCompare(texto(b.nombre),'es'))) {
+      pases.addRow({nombre:texto(p.nombre),ci:texto(p.ci),fecha:fecha(p.fecha),monto:numero(p.monto),metodo:texto(p.metodo),nota:texto(p.nota)});
+    }
     for (const c of [...clientes].sort((a,b)=>texto(a.nombre).localeCompare(texto(b.nombre),'es'))) {
       const registros = Object.entries(c.pagos || {}).filter(([,v])=>v);
       const activo = c.activo !== false;
@@ -68,12 +75,17 @@
       ['TOTAL DE SOCIOS',clientes.length],['Socios activos',totales.activos],['Socios al día',totales.aldia],
       ['Socios con retraso',totales.retraso],['Socios de baja',totales.baja],
       ['Cuotas pagadas registradas',totales.pagos],['Cuotas pendientes',totales.pendientes],
-      ['Total abonado (Gs.)',totales.abonado],['Saldo pendiente (Gs.)',totales.saldo],['Fecha del reporte',fecha(hoy)]
+      ['Cuotas mensuales abonadas (Gs.)',totales.abonado],['Saldo pendiente (Gs.)',totales.saldo],['Fecha del reporte',fecha(hoy)]
     ]) resumen.addRow({concepto,valor});
     resumen.getRow(2).height = 42;
     resumen.getRow(2).eachCell(c=>{c.font={bold:true,size:20,color:{argb:'FF176C61'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE1F3E9'}};c.alignment={vertical:'middle'};});
     for(let fila=2;fila<=10;fila++) resumen.getCell(fila,2).numFmt='#,##0';
     resumen.getCell('B11').numFmt='dd/mm/yyyy';
+    const totalDiarios=diarios.reduce((t,p)=>t+numero(p.monto),0);
+    resumen.addRow({concepto:'Pases diarios registrados',valor:diarios.length});
+    resumen.addRow({concepto:'Total pases diarios (Gs.)',valor:totalDiarios});
+    resumen.addRow({concepto:'Recaudación total (Gs.)',valor:totales.abonado+totalDiarios});
+    for(let fila=12;fila<=14;fila++)resumen.getCell(fila,2).numFmt='#,##0';
     return libro;
   }
   const api = {crearLibro};
