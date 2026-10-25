@@ -31,7 +31,7 @@ const byNombre = (a, b) => a.nombre.localeCompare(b.nombre, 'es');
 const activo = c => c.activo !== false;
 
 const CHECK = '<svg class="ck" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"/></svg>';
-const LOGO = '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="2" y="3" width="9" height="8" fill="currentColor"/><rect x="13" y="3" width="9" height="8" fill="currentColor"/><rect x="2" y="13" width="9" height="8" fill="currentColor"/><rect x="13.8" y="13.8" width="7.4" height="6.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/></svg>';
+const LOGO = '<img class="gym-logo" src="assets/logo-ra-training-gym.png" alt="RA Training Gym" width="96" height="96">';
 const EQUIS = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" fill="none"/></svg>';
 
 /* ---------- Estado ---------- */

@@ -2,6 +2,10 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Logo del gimnasio
+
+El acceso, las cabeceras y los íconos del navegador y de instalación usan una versión digital adaptada del logo RA Training Gym adjunto, en blanco y negro. El archivo está en `sitio/assets/logo-ra-training-gym.png`. Para activar este cambio solo vuelve a subir la carpeta `sitio` completa a Netlify y recarga con Ctrl+F5; no requiere cambios en Supabase.
+
 ## Confirmación por WhatsApp sin API de pago
 
 Esta mejora **no requiere SQL nuevo**. Si ya usas la versión anterior, vuelve a subir `sitio/` completa a Netlify, incluido el nuevo archivo `whatsapp.js`.
