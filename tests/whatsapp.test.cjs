@@ -22,3 +22,8 @@ test('datos de usuario y enlaces no pueden alterar el formato ni ejecutar HTML',
  const t=W.mensaje({...datos,nombre:'Ana\n*Estado:* Al día & + #',gimnasio:'GYM\n*texto*'},C);
  assert.match(t,/Socio\/a:\* Ana Estado: Al día & \+ #/);assert.equal(new URL(W.enlace('+595981123456',t)).searchParams.get('text'),t);assert.equal(W.enlace('',t),'');
 });
+
+test('emojis preservan sus puntos Unicode y se codifican una sola vez en enlaces directos y móviles',()=>{
+ const t=W.mensaje(datos,C);assert(t.startsWith(String.fromCodePoint(0x2705)));assert(t.includes(String.fromCodePoint(0x1F3CB)+String.fromCodePoint(0xFE0F)));assert(!t.includes('\uFFFD'));
+ for(const web of [false,true]){const href=W.enlace('0981123456',t,web),u=new URL(href);assert.equal(u.searchParams.get('text'),t);assert(href.includes('%E2%9C%85'));assert(href.includes('%F0%9F%8F%8B%EF%B8%8F'));assert(!href.includes('%25E2'));if(web){assert.equal(u.hostname,'web.whatsapp.com');assert.equal(u.searchParams.get('phone'),'595981123456');}}
+});

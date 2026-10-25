@@ -446,8 +446,8 @@ function abrirConfirmacionPago(c,filas) {
     <p class="hint">El pago ya está registrado. Puedes enviar este comprobante por WhatsApp sin contratar una API.</p>
     <div class="form"><div class="field"><label for="waTelefono">WhatsApp del socio</label><input id="waTelefono" type="tel" inputmode="tel" maxlength="30" value="${esc(actualizado?.telefono||c.telefono||'')}" placeholder="0981 123456 o +595 981 123456" aria-describedby="waAyuda"><p id="waAyuda" class="hint">Los celulares de Paraguay se completan con +595. Para otro país, escribe su código internacional. Este número se usa para esta confirmación; para próximos pagos guárdalo en Editar datos del socio.</p></div>
     <div class="field"><label for="waMensaje">Mensaje de confirmación</label><textarea id="waMensaje" rows="11" readonly>${esc(texto)}</textarea></div><p class="error" id="waError" role="status" hidden></p></div>
-    <div class="dlg-foot"><button type="button" class="btn" data-act="cerrar">Cerrar</button><a id="waEnviar" class="btn primary" target="_blank" rel="noopener noreferrer" hidden>Enviar confirmación por WhatsApp</a></div>
-    <p class="hint">Se abrirá WhatsApp o WhatsApp Web con el mensaje preparado. Revisa el destinatario y pulsa Enviar allí. Abrir el enlace no envía el mensaje automáticamente.</p>`);
+    <div class="dlg-foot"><button type="button" class="btn" data-act="cerrar">Cerrar</button><button type="button" class="btn" data-act="copiar-whatsapp">Copiar mensaje</button><button type="button" class="btn" id="waNueva" data-act="whatsapp-nueva" hidden>Abrir una pestaña nueva</button><a id="waEnviar" class="btn primary" data-act="abrir-whatsapp" target="ra-gym-whatsapp" hidden>Enviar confirmación por WhatsApp</a></div>
+    <p class="hint">En computadora se intentará reutilizar la pestaña de WhatsApp abierta desde este sistema. Revisa el destinatario y pulsa Enviar allí. Si ya tienes otra pestaña de WhatsApp, puedes copiar el mensaje y pegarlo en tu chat. No se envía automáticamente.</p><p class="hint"><a id="waMismaPestana" hidden>Abrir WhatsApp en esta misma pestaña</a> · Esta opción sale del sistema; puedes volver con Atrás.</p>`);
   actualizarWhatsApp();
 }
 async function reenviarConfirmacion(id,periodo) {
@@ -461,10 +461,36 @@ async function reenviarConfirmacion(id,periodo) {
 }
 function actualizarWhatsApp() {
   const input=$('#waTelefono');if(!input)return;
-  const url=ConfirmacionWhatsApp.enlace(input.value,$('#waMensaje').value),boton=$('#waEnviar'),error=$('#waError');
+  const movil=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+  const url=ConfirmacionWhatsApp.enlace(input.value,$('#waMensaje').value,!movil),boton=$('#waEnviar'),error=$('#waError'),misma=$('#waMismaPestana');
   boton.hidden=!url;
-  if(url)boton.href=url;else boton.removeAttribute('href');
+  boton.target=movil?'_self':'ra-gym-whatsapp';
+  misma.hidden=!url;if(!url)$('#waNueva').hidden=true;
+  if(url){boton.href=url;misma.href=url;}else{boton.removeAttribute('href');misma.removeAttribute('href');}
   error.hidden=!!url;error.textContent=input.value.trim()?'Revisa el número y el código de país antes de abrir WhatsApp.':'El pago está guardado. Completa el número del socio para preparar el chat de WhatsApp.';
+}
+
+// Solo se navega a los destinos fijos de WhatsApp generados por el sistema.
+let ventanaWhatsApp=null,whatsappIniciado=false;
+function abrirWhatsApp(evento,nueva=false) {
+  const link=$('#waEnviar');if(!link?.getAttribute('href')||S.session?.rol!=='recepcion'){evento.preventDefault();return;}
+  if(link.target==='_self'&&!nueva)return;
+  evento.preventDefault();
+  const url=link.href;
+  if(nueva){ventanaWhatsApp=null;whatsappIniciado=false;}
+  const alternativa=()=>{$('#waNueva').hidden=false;toast('No se puede reutilizar la pestaña anterior. Usa Copiar mensaje, esta misma pestaña o abre una nueva de forma manual.');};
+  if(whatsappIniciado&&(!ventanaWhatsApp||ventanaWhatsApp.closed)){alternativa();return;}
+  try {
+    if(ventanaWhatsApp&&!ventanaWhatsApp.closed){ventanaWhatsApp.location.href=url;ventanaWhatsApp.focus();return;}
+    ventanaWhatsApp=window.open(url,'ra-gym-whatsapp');
+    if(ventanaWhatsApp){whatsappIniciado=true;try{ventanaWhatsApp.opener=null;}catch{} ventanaWhatsApp.focus();}
+    else toast('El navegador bloqueó la ventana. Usa Abrir WhatsApp en esta misma pestaña o Copiar mensaje.');
+  } catch {alternativa();}
+}
+async function copiarWhatsApp() {
+  const campo=$('#waMensaje');if(!campo||S.session?.rol!=='recepcion')return;
+  try {await navigator.clipboard.writeText(campo.value);toast('Mensaje copiado. Pégalo en el chat del socio en WhatsApp.');}
+  catch {campo.focus();campo.select();if(typeof document.execCommand==='function' && document.execCommand('copy'))toast('Mensaje copiado. Pégalo en WhatsApp.');else toast('El mensaje está seleccionado. Usa Copiar o Ctrl+C y pégalo en WhatsApp.');}
 }
 
 async function quitarPago(id, periodo) {
@@ -857,6 +883,9 @@ async function onClick(e) {
       S.anio += Number(el.dataset.d);
       if (S.session && S.session.rol === 'cliente') update(); else refrescarDetalle();
       break;
+    case 'abrir-whatsapp': abrirWhatsApp(e);break;
+    case 'whatsapp-nueva': abrirWhatsApp(e,true);break;
+    case 'copiar-whatsapp': copiarWhatsApp();break;
     case 'whatsapp-pago': reenviarConfirmacion(S.modal?.id,el.dataset.p);break;
     case 'quitar': armar(el, '¿Seguro?', () => quitarPago(S.modal.id, el.dataset.p)); break;
     case 'n-mas': case 'n-menos': {

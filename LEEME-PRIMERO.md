@@ -12,6 +12,16 @@ El logo se muestra sin recuadro negro sobre el fondo del acceso, y en tono oscur
 
 El acceso, las cabeceras y los íconos del navegador y de instalación usan una versión digital adaptada del logo RA Training Gym adjunto, en blanco y negro. El archivo está en `sitio/assets/logo-ra-training-gym.png`. Para activar este cambio solo vuelve a subir la carpeta `sitio` completa a Netlify y recarga con Ctrl+F5; no requiere cambios en Supabase.
 
+## Emojis y pestañas de WhatsApp
+
+Esta actualización refuerza los emojis con secuencias Unicode y codifica el texto una sola vez. En computadora abre directamente **WhatsApp Web**, evitando la página intermedia de `wa.me`. En celular usa el enlace de WhatsApp en la misma pestaña para no acumular ventanas.
+
+El sistema intenta reutilizar la pestaña que abrió él mismo. **No puede detectar ni controlar una pestaña de WhatsApp que abriste por tu cuenta.** Si WhatsApp o el navegador corta la conexión con la ventana anterior, el sistema no abre otra automáticamente en cada intento: te ofrece **Copiar mensaje**, **Abrir WhatsApp en esta misma pestaña**, o **Abrir una pestaña nueva** de forma explícita.
+
+**Copiar mensaje** copia el comprobante completo, incluidos los emojis, para pegarlo en el chat que ya tienes abierto. Si los símbolos se siguen perdiendo al pasar por un enlace de WhatsApp, usa esta opción. Las pruebas confirman el texto Unicode y los enlaces generados, y simulan la reutilización de una pestaña; no demuestran el comportamiento de cada versión real de WhatsApp ni la entrega de mensajes.
+
+Ninguna de estas opciones utiliza WhatsApp Business API ni agrega un cargo por mensaje. Tú sigues pulsando **Enviar** dentro de WhatsApp. Para actualizar, sube `sitio/` completa a Netlify y recarga con Ctrl+F5; no requiere SQL adicional.
+
 ## Confirmación por WhatsApp sin API de pago
 
 Esta mejora **no requiere SQL nuevo**. Si ya usas la versión anterior, vuelve a subir `sitio/` completa a Netlify, incluido el nuevo archivo `whatsapp.js`.
@@ -102,7 +112,7 @@ Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_perm
 
 ## Pruebas y límites
 
-Comprobado: 23 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
+Comprobado: 24 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 

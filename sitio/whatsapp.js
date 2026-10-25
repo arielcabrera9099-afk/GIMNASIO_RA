@@ -20,18 +20,18 @@
     let estado='Pago registrado. Estado de cuotas pendiente de verificar.';
     if(verificado && socio) {
       const pendientes=Cuotas.estado(socio,hoy).retraso;
-      estado=pendientes?`Pago registrado. Quedan ${pendientes} ${pendientes===1?'cuota pendiente':'cuotas pendientes'}.`: 'Al día 🏋️';
+      estado=pendientes?`Pago registrado. Quedan ${pendientes} ${pendientes===1?'cuota pendiente':'cuotas pendientes'}.`: 'Al día \u{1F3CB}\uFE0F';
       if(socio.activo===false)estado='Pago registrado. Socio de baja.';
     }
     // Evitar que nombres escritos por usuarios alteren el formato del recibo.
     const limpio=v=>String(v||'').replace(/[\r\n*_~`]/g,' ').replace(/\s+/g,' ').trim();
-    return ['✅ *REGISTRO DE PAGO EXITOSO*',`*Socio/a:* ${limpio(nombre)}`,'*Concepto:* Cuota mensual',
+    return ['\u2705 *REGISTRO DE PAGO EXITOSO*',`*Socio/a:* ${limpio(nombre)}`,'*Concepto:* Cuota mensual',
       `*${periodos.length===1?'Mes abonado':'Meses abonados'}:* ${etiquetas.join(', ')}`,
       `*Monto total:* Gs. ${String(total).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}`,
       `*Fecha de pago:* ${fechas.join(', ')}`,`*Estado:* ${estado}`,'',
       '¡Gracias por tu pago! Que tengas un excelente entrenamiento.',limpio(gimnasio)].filter((v,i,a)=>v!==''||i<a.length-1).join('\n');
   }
-  function enlace(numero,texto){const n=telefono(numero);return n?'https://wa.me/'+n+'?text='+encodeURIComponent(texto):'';}
+  function enlace(numero,texto,web=false){const n=telefono(numero);if(!n)return '';const encoded=encodeURIComponent(texto);return web?'https://web.whatsapp.com/send?phone='+n+'&text='+encoded:'https://wa.me/'+n+'?text='+encoded;}
   const api={telefono,mensaje,enlace};
   if(typeof module==='object')module.exports=api;else root.ConfirmacionWhatsApp=api;
 })(typeof window==='object'?window:globalThis);
