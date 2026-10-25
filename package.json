@@ -4,7 +4,7 @@
   "private": true,
   "description": "Portal estático de socios y recepción con Supabase",
   "scripts": {
-    "test": "node --test tests/cuotas.test.cjs tests/exportar.test.cjs",
+    "test": "node --test tests/cuotas.test.cjs tests/exportar.test.cjs tests/whatsapp.test.cjs",
     "test:db": "node tests/base-de-datos.test.cjs && node --test tests/recepcionistas.test.cjs tests/pases-diarios.test.cjs",
     "test:ui": "node tests/interfaz.test.cjs"
   },

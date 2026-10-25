@@ -105,6 +105,7 @@ Otros servicios gratuitos para sitios estáticos (Cloudflare Pages, Vercel) tamb
 - **Registrar un pago:** en la lista, **Registrar pago** en la fila del socio. Se asigna a los meses más viejos sin pagar. Con **+** se registran varias cuotas juntas, incluso adelantadas.
 - **Pases diarios:** usa esta sección para visitantes que abonan por día. Ejecuta una vez `7_pases_diarios.sql` para activarla; registra cada visita sin crear cuotas mensuales.
 - **Descargar registros:** en recepción, **Descargar Excel** genera un archivo con todos los pagos registrados, el resumen de socios y las cuotas pendientes. Ignora los filtros de pantalla.
+- **Confirmar por WhatsApp:** después de guardar una cuota, revisa el mensaje y el teléfono y pulsa **Enviar confirmación por WhatsApp**. Luego pulsa Enviar en WhatsApp. No usa una API de pago ni envía automáticamente.
 - **Ver quién debe:** el filtro **Con retraso** y el orden **Más retraso primero**. Cada socio muestra "Al día" o "N cuotas de retraso".
 - **Corregir un error:** abre el socio (clic en su nombre) y presiona **Quitar** junto al pago. Pide una segunda confirmación.
 - **Dar de baja:** abre el socio y presiona **Dar de baja**. Conserva su historial, deja de contar como activo y ya no puede entrar.

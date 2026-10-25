@@ -2,6 +2,20 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Confirmación por WhatsApp sin API de pago
+
+Esta mejora **no requiere SQL nuevo**. Si ya usas la versión anterior, vuelve a subir `sitio/` completa a Netlify, incluido el nuevo archivo `whatsapp.js`.
+
+1. En **Nuevo socio** o **Editar datos**, completa **Teléfono / WhatsApp**. Para Paraguay acepta `0981 123456`, `981123456` o `+595 981 123456`; el enlace usa el código internacional +595. Para otros países, escribe el número con `+` y código de país.
+2. Registra la cuota como siempre. Después de guardarla aparece **Confirmación de pago**, con los meses realmente abonados, monto total, fecha y estado de cuotas.
+3. Revisa el número y pulsa **Enviar confirmación por WhatsApp**. Se abrirá WhatsApp o WhatsApp Web con el mensaje preparado. **Debes pulsar Enviar dentro de WhatsApp** para enviarlo. El sistema no lo envía automáticamente ni cobra una tarifa de API.
+
+Si no hay teléfono o el número no es válido, el pago queda guardado igualmente. Puedes completar/corregir el número en esta pantalla para ese comprobante. Si lo completas allí no se guarda en la ficha: para reutilizarlo en próximos pagos, agrégalo en **Editar datos** del socio.
+
+El mensaje solo dice **Al día** cuando la información actualizada confirma que no hay cuotas pendientes. En un pago parcial muestra las cuotas que faltan. Si el pago se guardó pero falló la actualización, informa que el estado de cuotas está pendiente de verificar. Para volver a abrir un comprobante anterior, abre la ficha del socio y pulsa **WhatsApp** junto al mes en **Pagos registrados**. Ese botón verifica el registro y prepara la confirmación de ese mes; no registra otro pago. No vuelvas a cobrar ni registrar el pago para reenviar su comprobante.
+
+No hace falta contratar WhatsApp Business API ni otra integración. Es un enlace `wa.me` al chat del socio, disponible en celular y computadora con WhatsApp. Se necesita conexión a Internet y una cuenta de WhatsApp; la disponibilidad del destinatario y la entrega del mensaje las gestiona WhatsApp. El sistema no marca el mensaje como enviado o entregado solo por abrir el enlace.
+
 ## Pases diarios: visitantes que no son mensualeros
 
 Para activar esta actualización, ejecuta **`base-de-datos/7_pases_diarios.sql`** en **Supabase → SQL Editor → Run** y vuelve a subir la carpeta **`sitio` completa** a tu proyecto de Netlify. El archivo crea una tabla independiente y conserva todos los socios y pagos mensuales existentes. No repitas las migraciones 4, 5 o 6 si ya las aplicaste.
@@ -78,7 +92,7 @@ Si partes de una base nueva, usa `1_crear_base_de_datos.sql` y luego `2_dar_perm
 
 ## Pruebas y límites
 
-Comprobado: 19 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
+Comprobado: 23 pruebas de reglas de cuotas, búsqueda y exportación XLSX; instalación SQL limpia y repetida; migración desde el esquema original con datos conservados; crear socio, consultar PIN, registrar pagos y controles de permisos en PostgreSQL embebido (PGlite con pgcrypto). Flujo de pantallas probado en Chromium con Supabase simulado, en escritorio y móvil, sin errores JavaScript ni desbordamiento horizontal. Se descargó y volvió a leer el Excel generado en Chromium para comprobar filas, fechas y tipos de datos; también se verificó que los filtros no recortan la exportación y que un fallo de actualización impide descargar datos antiguos.
 
 Las capturas de `capturas/` usan datos ficticios de prueba. No muestran datos de tu base.
 

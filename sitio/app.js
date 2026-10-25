@@ -363,7 +363,7 @@ function detalleHTML(c) {
   <div class="dlg-nav">${anioNav()}</div>
   ${carnetHTML(c, S.anio, 'recepcion')}
   <h3>Pagos registrados</h3>
-  ${pagos.length ? `<ul class="hist">${pagos.map(p => `<li><span class="h-per">${etiqueta(p.periodo)}</span><span class="h-fec">${fmtFecha(p.fecha)}</span><span class="h-met">${esc(p.metodo || '')}</span><span class="h-monto mono">${fmtGs(p.monto)}</span><span class="h-acc"><button type="button" class="linkbtn danger" data-act="quitar" data-p="${p.periodo}">Quitar</button></span></li>`).join('')}</ul>` : '<p class="muted">Todavía no hay pagos registrados.</p>'}
+  ${pagos.length ? `<ul class="hist">${pagos.map(p => `<li><span class="h-per">${etiqueta(p.periodo)}</span><span class="h-fec">${fmtFecha(p.fecha)}</span><span class="h-met">${esc(p.metodo || '')}</span><span class="h-monto mono">${fmtGs(p.monto)}</span><span class="h-acc"><button type="button" class="linkbtn" data-act="whatsapp-pago" data-p="${p.periodo}">WhatsApp</button><button type="button" class="linkbtn danger" data-act="quitar" data-p="${p.periodo}">Quitar</button></span></li>`).join('')}</ul>` : '<p class="muted">Todavía no hay pagos registrados.</p>'}
   <div class="dlg-foot">
     ${activo(c) ? '<button type="button" class="btn primary" data-act="cobrar">Registrar pago</button>' : ''}
     <button type="button" class="btn" data-act="editar">Editar datos</button>
@@ -427,6 +427,7 @@ function cobrarActualizar() {
   $('#pgOk').textContent = n === 1 ? 'Registrar 1 cuota' : `Registrar ${n} cuotas`;
 }
 async function enviarPago() {
+  if ($('#pgOk')?.disabled) return;
   const err = $('#pgError'); const fallo = m => { err.textContent = m; err.hidden = false; };
   const c = S.clientes.find(x => x.id === $('#pgCliente').value); if (!c) return fallo('Elige un socio.');
   const n = clamp(parseInt($('#pgN').value, 10) || 1, 1, 12);
@@ -444,9 +445,39 @@ async function enviarPago() {
     btn.disabled = false; return;
   }
   await cargar(true);
-  cerrar();
+  if (S.session?.rol !== 'recepcion') return;
+  abrirConfirmacionPago(c,filas);
   toast(`${n === 1 ? 'Cuota registrada' : n + ' cuotas registradas'} para ${c.nombre}.`);
 }
+function abrirConfirmacionPago(c,filas) {
+  const actualizado=S.clientes.find(x=>x.id===c.id);
+  const texto=ConfirmacionWhatsApp.mensaje({nombre:c.nombre,filas,socio:actualizado,hoy:hoyISO(),verificado:!S.errorDatos&&!!actualizado,gimnasio:NOMBRE},Cuotas);
+  S.modal={tipo:'confirmacion',id:c.id};
+  abrir(`<div class="dlg-head"><div><p class="eyebrow">Pago guardado</p><h2 id="dlgTitulo">Confirmación de pago</h2></div>${btnCerrar}</div>
+    <p class="hint">El pago ya está registrado. Puedes enviar este comprobante por WhatsApp sin contratar una API.</p>
+    <div class="form"><div class="field"><label for="waTelefono">WhatsApp del socio</label><input id="waTelefono" type="tel" inputmode="tel" maxlength="30" value="${esc(actualizado?.telefono||c.telefono||'')}" placeholder="0981 123456 o +595 981 123456" aria-describedby="waAyuda"><p id="waAyuda" class="hint">Los celulares de Paraguay se completan con +595. Para otro país, escribe su código internacional. Este número se usa para esta confirmación; para próximos pagos guárdalo en Editar datos del socio.</p></div>
+    <div class="field"><label for="waMensaje">Mensaje de confirmación</label><textarea id="waMensaje" rows="11" readonly>${esc(texto)}</textarea></div><p class="error" id="waError" role="status" hidden></p></div>
+    <div class="dlg-foot"><button type="button" class="btn" data-act="cerrar">Cerrar</button><a id="waEnviar" class="btn primary" target="_blank" rel="noopener noreferrer" hidden>Enviar confirmación por WhatsApp</a></div>
+    <p class="hint">Se abrirá WhatsApp o WhatsApp Web con el mensaje preparado. Revisa el destinatario y pulsa Enviar allí. Abrir el enlace no envía el mensaje automáticamente.</p>`);
+  actualizarWhatsApp();
+}
+async function reenviarConfirmacion(id,periodo) {
+  if(S.session?.rol!=='recepcion')return;
+  const modal=S.modal;
+  await cargar(true);
+  if(S.session?.rol!=='recepcion' || S.modal!==modal)return;
+  const c=S.clientes.find(x=>x.id===id),p=c?.pagos?.[periodo];
+  if(S.errorDatos || !p){toast('No se pudo verificar ese pago. Actualiza el historial e intenta nuevamente.');return;}
+  abrirConfirmacionPago(c,[{...p,periodo}]);
+}
+function actualizarWhatsApp() {
+  const input=$('#waTelefono');if(!input)return;
+  const url=ConfirmacionWhatsApp.enlace(input.value,$('#waMensaje').value),boton=$('#waEnviar'),error=$('#waError');
+  boton.hidden=!url;
+  if(url)boton.href=url;else boton.removeAttribute('href');
+  error.hidden=!!url;error.textContent=input.value.trim()?'Revisa el número y el código de país antes de abrir WhatsApp.':'El pago está guardado. Completa el número del socio para preparar el chat de WhatsApp.';
+}
+
 async function quitarPago(id, periodo) {
   const { error } = await sb.from('pagos').delete().eq('socio_id', id).eq('periodo', periodo).then(r => r, () => ({ error: { message: 'red' } }));
   if (error) { toast(msgError(error, 'No se pudo quitar el pago. Intenta de nuevo.')); return; }
@@ -461,7 +492,7 @@ function clienteFormHTML(c) {
     <div class="field"><label for="cNombre">Nombre completo</label><input id="cNombre" value="${esc(c?.nombre || '')}" autocomplete="off"></div>
     <div class="fila2">
       <div class="field"><label for="cCi">Cédula</label><input id="cCi" inputmode="numeric" value="${esc(c?.ci || '')}" autocomplete="off" placeholder="Solo números"></div>
-      <div class="field"><label for="cTel">Teléfono (opcional)</label><input id="cTel" value="${esc(c?.telefono || '')}" autocomplete="off" inputmode="tel"></div>
+      <div class="field"><label for="cTel">Teléfono / WhatsApp (opcional)</label><input id="cTel" maxlength="30" placeholder="0981 123456 o +595 981 123456" value="${esc(c?.telefono || '')}" autocomplete="off" inputmode="tel"></div>
     </div>
     <div class="fila2">
       <div class="field"><label for="cCuota">Cuota mensual (Gs.)</label><input id="cCuota" type="number" min="0" step="1000" inputmode="numeric" value="${c ? Number(c.cuota) || '' : 150000}"></div>
@@ -837,6 +868,7 @@ async function onClick(e) {
       S.anio += Number(el.dataset.d);
       if (S.session && S.session.rol === 'cliente') update(); else refrescarDetalle();
       break;
+    case 'whatsapp-pago': reenviarConfirmacion(S.modal?.id,el.dataset.p);break;
     case 'quitar': armar(el, '¿Seguro?', () => quitarPago(S.modal.id, el.dataset.p)); break;
     case 'n-mas': case 'n-menos': {
       const i = $('#pgN'); i.value = clamp((parseInt(i.value, 10) || 1) + (act === 'n-mas' ? 1 : -1), 1, 12); cobrarActualizar(); break;
@@ -867,6 +899,7 @@ function onInput(e) {
   else if(id==='pdFiltroFecha'){S.diariosFecha=e.target.value;renderDiarios();}
   else if(id==='pdFiltroNombre'){S.diariosNombre=e.target.value;renderDiarios();}
   else if(id==='pdFiltroCi'){S.diariosCi=e.target.value;renderDiarios();}
+  else if (id === 'waTelefono') actualizarWhatsApp();
   else if (id === 'orden') { S.orden = e.target.value; renderLista(); }
   else if (id === 'pgCliente') {
     const c = S.clientes.find(x => x.id === e.target.value);
