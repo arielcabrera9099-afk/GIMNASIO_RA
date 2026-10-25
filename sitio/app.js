@@ -31,7 +31,7 @@ const byNombre = (a, b) => a.nombre.localeCompare(b.nombre, 'es');
 const activo = c => c.activo !== false;
 
 const CHECK = '<svg class="ck" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"/></svg>';
-const LOGO = '<img class="gym-logo" src="assets/logo-ra-training-gym.png" alt="RA Training Gym" width="96" height="96">';
+const LOGO = '<span class="gym-logo" role="img" aria-label="RA Training Gym"></span>';
 const EQUIS = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" fill="none"/></svg>';
 
 /* ---------- Estado ---------- */
@@ -192,23 +192,14 @@ function configHTML() {
 }
 function loginHTML() {
   const tab = S.rolTab;
-  const mesActual = new Date().getMonth();
-  let demo = '';
-  for (let m = 0; m < 12; m++) {
-    demo += m <= mesActual
-      ? `<li class="mes pagada"><span class="mn">${MES3[m]}</span><span class="pie">${CHECK}</span></li>`
-      : `<li class="mes"><span class="mn">${MES3[m]}</span></li>`;
-  }
   return `
   <main class="login">
     <section class="hero"><div class="login-brand">${LOGO}<span>${esc(NOMBRE)}</span></div>
       <p class="eyebrow">GIMNASIO · PORTAL DE SOCIOS</p>
-      <h1>Tu esfuerzo.<br>Tu progreso.<br><em>Todo al día.</em></h1>
-      <p class="lead">Un espacio para seguir entrenando. Consulta tus cuotas, revisa tus pagos y mantén tu membresía al día.</p>
-      <div class="hero-note"><span>01 / TU MEMBRESÍA, MÁS SIMPLE</span><p>Menos trámites.<br>Más tiempo para entrenar.</p></div><div class="carnet login-carnet" aria-hidden="true">
-        <div class="carnet-top"><span>Carnet de socio</span><span class="mono">${new Date().getFullYear()}</span></div>
-        <ol class="meses">${demo}</ol>
-      </div>
+      <h1>Tu entrenamiento.<br><em>Todo en un lugar.</em></h1>
+      <p class="lead">Consulta tu membresía y tus pagos en unos pasos. Más simple, para que te concentres en entrenar.</p>
+      <div class="home-benefits"><div><span class="benefit-check" aria-hidden="true">✓</span><p><strong>Tus cuotas, claras</strong><span>Revisa tus meses abonados y pendientes.</span></p></div><div><span class="benefit-check" aria-hidden="true">✓</span><p><strong>Tu historial, a mano</strong><span>Consulta cuándo y cuánto pagaste.</span></p></div></div>
+      <p class="home-signature">RA TRAINING GYM <span>·</span> Cada entrenamiento cuenta.</p>
     </section>
     <section class="panel">
       <div class="tabs" role="tablist" aria-label="Tipo de acceso">
@@ -229,7 +220,7 @@ function panelRecepcion() {
   </form>`;
 }
 function panelCliente() {
-  return `<p class="eyebrow">BIENVENIDO DE NUEVO</p><h2>Tu espacio de entrenamiento</h2><p class="panel-intro">Ingresa con tu cédula y el PIN que te entregó recepción.</p>
+  return `<p class="eyebrow">BIENVENIDO DE NUEVO</p><h2>Consulta tus cuotas</h2><p class="panel-intro">Escribe tu cédula y el PIN que te entregó recepción para ver tu membresía.</p>
   <form id="formLogin" class="form" autocomplete="off" novalidate>
     <div class="field"><label for="lgCi">Número de cédula</label><input id="lgCi" inputmode="numeric" autocomplete="off" placeholder="Ej. 4123456"></div>
     <div class="field"><label for="lgPin">PIN</label><input id="lgPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="4 a 6 dígitos"></div>
@@ -261,22 +252,20 @@ async function entrarRecepcion() {
 function recepcionHTML() {
   return `<div class="wrap">
     ${topHTML('Recepción')}
+    <section class="dashboard-heading"><div><p class="eyebrow">TU GIMNASIO, ORGANIZADO</p><h1>Panel de recepción</h1><p class="muted">Registra pagos, recibe visitantes y encuentra a cada socio.</p></div><div class="home-tools"><button type="button" class="btn ghost sm" data-act="actualizar">Actualizar</button>${S.admin ? '<button type="button" class="btn sm" data-act="recepcionistas">Recepcionistas</button>' : ''}<button type="button" class="btn sm" data-act="exportar-excel" title="Exporta todos los registros, sin aplicar los filtros de pantalla">Descargar Excel</button></div></section>
     <div id="avisoDatos"></div>
     <section id="stats" class="stats" aria-label="Resumen"></section>
+    <section class="home-actions" aria-label="Acciones principales">
+      <button type="button" class="action-card featured" data-act="cobrar-global" aria-label="Registrar pago"><span class="action-top"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg></span><span class="action-arrow" aria-hidden="true">→</span></span><strong>Registrar pago</strong><span>Registra el pago de una o varias cuotas.</span></button>
+      <button type="button" class="action-card" data-act="nuevo-cliente" aria-label="Nuevo socio"><span class="action-top"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M19 8v6M16 11h6"/></svg></span><span class="action-arrow" aria-hidden="true">→</span></span><strong>Nuevo socio</strong><span>Inscribe a un cliente y acuerda su fecha de pago.</span></button>
+      <button type="button" class="action-card" data-act="pases-diarios" aria-label="Pases diarios"><span class="action-top"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></span><span class="action-arrow" aria-hidden="true">→</span></span><strong>Pases diarios</strong><span>Registra a quienes pagan por una visita.</span></button>
+    </section>
+    <section class="directory-heading"><div><h2>Socios mensuales</h2><p class="hint">Busca por nombre o CI y filtra por estado de pago.</p></div></section>
     <section class="toolbar">
       <div class="search field"><label for="busca">Nombre del cliente</label><input id="busca" type="search" placeholder="Buscar por nombre…" value="${esc(S.q)}" autocomplete="off"></div>
       <div class="search field"><label for="buscaCi">Cédula de identidad</label><input id="buscaCi" type="search" inputmode="numeric" placeholder="Buscar por CI…" value="${esc(S.ci)}" autocomplete="off"></div>
+      <div class="field directory-sort"><label for="orden">Ordenar socios</label><select id="orden"><option value="retraso" ${S.orden === 'retraso' ? 'selected' : ''}>Más retraso primero</option><option value="nombre" ${S.orden === 'nombre' ? 'selected' : ''}>Nombre A–Z</option></select></div>
       <div id="chips" class="chips" role="group" aria-label="Filtrar por estado"></div>
-      <div class="toolbar-r">
-        <label class="sr" for="orden">Ordenar</label>
-        <select id="orden"><option value="retraso" ${S.orden === 'retraso' ? 'selected' : ''}>Más retraso primero</option><option value="nombre" ${S.orden === 'nombre' ? 'selected' : ''}>Nombre A–Z</option></select>
-        <button type="button" class="btn ghost sm" data-act="actualizar">Actualizar</button>
-        ${S.admin ? '<button type="button" class="btn" data-act="recepcionistas">Recepcionistas</button>' : ''}
-        <button type="button" class="btn" data-act="pases-diarios">Pases diarios</button>
-        <button type="button" class="btn" data-act="exportar-excel" title="Exporta todos los registros, sin aplicar los filtros de pantalla">Descargar Excel</button>
-        <button type="button" class="btn" data-act="nuevo-cliente">Nuevo socio</button>
-        <button type="button" class="btn primary" data-act="cobrar-global">Registrar pago</button>
-      </div>
     </section>
     <p id="resultados" class="hint" aria-live="polite"></p><div id="cabecera" class="thead" aria-hidden="true"><span>Socio</span><span>Cuota</span><span>Estado</span><span>Últimos 6 meses</span><span>Último pago</span><span></span></div>
     <ul id="lista" class="lista"></ul>

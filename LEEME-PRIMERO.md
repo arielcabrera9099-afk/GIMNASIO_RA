@@ -2,6 +2,12 @@
 
 Esta entrega conserva la conexión pública de `sitio/config.js` enviada en el segundo ZIP. No contiene claves administrativas. Es un sitio estático: para publicarlo no necesitas Node, instalar paquetes ni compilar.
 
+## Inicio renovado
+
+El inicio tiene un acceso claro para clientes, con las indicaciones de cédula y PIN. En recepción, las acciones principales aparecen en tarjetas: **Registrar pago**, **Nuevo socio** y **Pases diarios**. Las herramientas de Excel y personal están arriba; la búsqueda y los filtros están agrupados bajo **Socios mensuales**.
+
+El logo se muestra sin recuadro negro sobre el fondo del acceso, y en tono oscuro sobre las cabeceras claras. Se conserva el dibujo original mediante presentación con máscara de luminancia y una alternativa de mezcla para navegadores anteriores. Este cambio de interfaz no requiere SQL adicional: actualiza `sitio/` completa en Netlify.
+
 ## Logo del gimnasio
 
 El acceso, las cabeceras y los íconos del navegador y de instalación usan una versión digital adaptada del logo RA Training Gym adjunto, en blanco y negro. El archivo está en `sitio/assets/logo-ra-training-gym.png`. Para activar este cambio solo vuelve a subir la carpeta `sitio` completa a Netlify y recarga con Ctrl+F5; no requiere cambios en Supabase.
